@@ -54,11 +54,13 @@ const voucherLabels: Record<VoucherType, string> = {
 export function ClientDetailsClient({
   client,
   initialTransactions,
-  userRole,
+  currentUser,
+  userGlobalBalance,
 }: {
   client: ClientWithSummary;
   initialTransactions: LedgerTransaction[];
-  userRole: "superadmin" | "admin" | "user" | null;
+  currentUser: { id: string; role: string; cash_advance: number } | null;
+  userGlobalBalance?: number;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -68,10 +70,18 @@ export function ClientDetailsClient({
   const tTrans = useTranslations("Transaction");
   const locale = useLocale();
 
+  const userRole = currentUser?.role || null;
+  const filteredInitialTransactions = userRole === "superadmin" 
+    ? initialTransactions 
+    : initialTransactions.filter(t => t.created_by === currentUser?.id);
+
   const [activeTab, setActiveTab] = useState<Tab>("overview");
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const [transactions, setTransactions] = useState(filteredInitialTransactions);
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState<TransactionForm>(emptyTransaction);
+  const [form, setForm] = useState<TransactionForm>({
+    ...emptyTransaction,
+    type: userRole === "superadmin" ? "payment" : "expense"
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +99,7 @@ export function ClientDetailsClient({
         (payload) => {
           if (payload.eventType === "INSERT") {
             const next = payload.new as LedgerTransaction;
+            if (userRole !== "superadmin" && next.created_by !== currentUser?.id) return;
             setTransactions((current) =>
               current.some((transaction) => transaction.id === next.id)
                 ? current
@@ -129,12 +140,22 @@ export function ClientDetailsClient({
     { payments: 0, expenses: 0 },
   );
 
-  let balance = totals.payments - totals.expenses;
+  let balance = 0;
+  let displayPayments = 0;
+  let displayExpenses = totals.expenses;
   const profitToDeduct = userRole === "superadmin" ? Number(client.profit || 0) : 0;
 
-  if (profitToDeduct > 0) {
-    totals.payments = Math.max(0, totals.payments - profitToDeduct);
-    balance = balance - profitToDeduct;
+  if (userRole === "superadmin") {
+    displayPayments = totals.payments;
+    if (profitToDeduct > 0) {
+      displayPayments = Math.max(0, displayPayments - profitToDeduct);
+    }
+    balance = displayPayments - displayExpenses;
+  } else {
+    // For normal users: displayPayments is their cash advance,
+    // balance is global (cash_advance - ALL expenses across all clients)
+    displayPayments = currentUser?.cash_advance || 0;
+    balance = userGlobalBalance !== undefined ? userGlobalBalance : displayPayments - displayExpenses;
   }
 
   async function saveTransaction(event: React.FormEvent<HTMLFormElement>) {
@@ -180,7 +201,10 @@ export function ClientDetailsClient({
     }
 
     setTransactions((current) => [data, ...current]);
-    setForm(emptyTransaction);
+    setForm({
+      ...emptyTransaction,
+      type: userRole === "superadmin" ? "payment" : "expense"
+    });
     setModalOpen(false);
     router.refresh();
   }
@@ -219,8 +243,8 @@ export function ClientDetailsClient({
       </div>
 
       <div className={cn("grid gap-4", userRole === "superadmin" ? "md:grid-cols-4" : "md:grid-cols-3")}>
-        <FinanceMetric label={t("totalPayments")} value={formatCurrency(totals.payments, locale)} tone="payment" />
-        <FinanceMetric label={t("totalExpenses")} value={formatCurrency(totals.expenses, locale)} tone="expense" />
+        <FinanceMetric label={userRole === "superadmin" ? t("totalPayments") : "Cash Advance"} value={formatCurrency(displayPayments, locale)} tone="payment" />
+        <FinanceMetric label={userRole === "superadmin" ? t("totalExpenses") : "My Expenses"} value={formatCurrency(displayExpenses, locale)} tone="expense" />
         {userRole === "superadmin" && (
           <FinanceMetric label={tClients("form.profit") || "Profit"} value={formatCurrency(Number(client.profit || 0), locale)} tone="payment" />
         )}
@@ -273,19 +297,21 @@ export function ClientDetailsClient({
 
       <Modal title={t("addTransaction")} open={modalOpen} onClose={() => setModalOpen(false)}>
         <form onSubmit={saveTransaction} className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setForm((current) => ({ ...current, type: "payment" }))}
-              className={cn(
-                "h-10 rounded-md border text-sm font-semibold",
-                form.type === "payment"
-                  ? "border-green-700 bg-green-50 text-green-800 dark:border-green-600 dark:bg-green-950/40 dark:text-green-300"
-                  : "border-ink-100 text-ink-700 hover:bg-ink-50 dark:border-ink-600 dark:text-ink-300 dark:hover:bg-ink-800",
-              )}
-            >
-              {tCommon("payment")}
-            </button>
+          <div className={cn("grid gap-3", userRole === "superadmin" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+            {userRole === "superadmin" && (
+              <button
+                type="button"
+                onClick={() => setForm((current) => ({ ...current, type: "payment" }))}
+                className={cn(
+                  "h-10 rounded-md border text-sm font-semibold",
+                  form.type === "payment"
+                    ? "border-green-700 bg-green-50 text-green-800 dark:border-green-600 dark:bg-green-950/40 dark:text-green-300"
+                    : "border-ink-100 text-ink-700 hover:bg-ink-50 dark:border-ink-600 dark:text-ink-300 dark:hover:bg-ink-800",
+                )}
+              >
+                {tCommon("payment")}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setForm((current) => ({ ...current, type: "expense" }))}
@@ -444,7 +470,7 @@ function OverviewTab({
                   <h4 className="mb-4 text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
                     {useTranslations("Charts")("incomeExpense")}
                   </h4>
-                  <IncomeExpenseBarChart transactions={transactions} />
+                  <IncomeExpenseBarChart transactions={transactions} showPayments={userRole === "superadmin"} />
                 </div>
                 <div className="rounded-xl border border-ink-100 bg-ink-50/30 p-4 dark:border-ink-800 dark:bg-ink-900/20">
                   <h4 className="mb-4 text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">

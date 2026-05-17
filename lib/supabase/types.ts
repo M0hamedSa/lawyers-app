@@ -47,6 +47,7 @@ export type Database = {
           id: string;
           full_name: string;
           role: UserRole;
+          cash_advance: number;
           created_at: string;
           updated_at: string;
         };
@@ -54,10 +55,12 @@ export type Database = {
           id: string;
           full_name: string;
           role?: UserRole;
+          cash_advance?: number;
         };
         Update: {
           full_name?: string;
           role?: UserRole;
+          cash_advance?: number;
         };
         Relationships: [];
       };

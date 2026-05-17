@@ -16,8 +16,10 @@ import { useLocale, useTranslations } from "next-intl";
 
 export function BalanceChart({
   data,
+  showPayments = true,
 }: {
   data: { month: string; payments: number; expenses: number }[];
+  showPayments?: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations("Charts");
@@ -118,13 +120,15 @@ export function BalanceChart({
               </span>
             )}
           />
-          <Bar
-            dataKey="payments"
-            name={t("payments")}
-            fill="#10B981"
-            radius={[3, 3, 0, 0]}
-            barSize={compact ? 14 : 22}
-          />
+          {showPayments && (
+            <Bar
+              dataKey="payments"
+              name={t("payments")}
+              fill="#10B981"
+              radius={[3, 3, 0, 0]}
+              barSize={compact ? 14 : 22}
+            />
+          )}
           <Bar
             dataKey="expenses"
             name={t("expenses")}

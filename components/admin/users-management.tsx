@@ -17,6 +17,7 @@ type UserWithAccess = {
   id: string;
   full_name: string;
   role: UserRole;
+  cash_advance: number;
   client_access: { client_id: string }[];
 };
 
@@ -49,9 +50,11 @@ export function UsersManagement({
   const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", role: "user" });
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [cashAdvanceInput, setCashAdvanceInput] = useState<string>("");
 
   function openManage(user: UserWithAccess) {
     setSelectedUser(user);
+    setCashAdvanceInput(user.cash_advance?.toString() || "0");
     setModalOpen(true);
   }
 
@@ -70,6 +73,27 @@ export function UsersManagement({
         u.id === selectedUser.id ? { ...u, role: newRole } : u
       ));
       setSelectedUser(prev => prev ? { ...prev, role: newRole } : null);
+    }
+    setSubmitting(false);
+    setTogglingId(null);
+  }
+
+  async function updateCashAdvance() {
+    if (!selectedUser || currentRole !== "superadmin") return;
+
+    const newAmount = parseFloat(cashAdvanceInput) || 0;
+    setSubmitting(true);
+    setTogglingId("cash-advance");
+    const { error } = await supabase
+      .from("users")
+      .update({ cash_advance: newAmount })
+      .eq("id", selectedUser.id);
+
+    if (!error) {
+      setUsers(prev => prev.map(u =>
+        u.id === selectedUser.id ? { ...u, cash_advance: newAmount } : u
+      ));
+      setSelectedUser(prev => prev ? { ...prev, cash_advance: newAmount } : null);
     }
     setSubmitting(false);
     setTogglingId(null);
@@ -238,34 +262,55 @@ export function UsersManagement({
           </div>
 
           {currentRole === "superadmin" && (
-            <div className="space-y-2 border-b border-ink-100 pb-4">
-              <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">{t("userRole")}</label>
-              {selectedUser?.id === currentUserId && selectedUser?.role === "superadmin" ? (
-                <p className="text-xs text-brass-700 font-medium">
-                  {t("lockoutWarning")}
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {(["user", "admin", "superadmin"] as UserRole[]).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      disabled={submitting}
-                      onClick={() => changeRole(r)}
-                      className={cn(
-                        "flex min-w-[calc(50%-0.25rem)] flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition sm:min-w-0",
-                        selectedUser?.role === r
-                          ? "border-ink-900 bg-ink-900 text-white dark:border-brass-400 dark:bg-brass-500 dark:text-ink-900"
-                          : "border-ink-200 text-ink-700 hover:bg-ink-50 dark:border-ink-600 dark:text-ink-300 dark:hover:bg-ink-800"
-                      )}
-                    >
-                      {togglingId === `role-${r}` && <Loader2 className="size-3 animate-spin" />}
-                      {r.charAt(0).toUpperCase() + r.slice(1)}
-                    </button>
-                  ))}
+            <>
+              <div className="space-y-2 border-b border-ink-100 pb-4">
+                <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">{t("userRole")}</label>
+                {selectedUser?.id === currentUserId && selectedUser?.role === "superadmin" ? (
+                  <p className="text-xs text-brass-700 font-medium">
+                    {t("lockoutWarning")}
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {(["user", "admin", "superadmin"] as UserRole[]).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => changeRole(r)}
+                        className={cn(
+                          "flex min-w-[calc(50%-0.25rem)] flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition sm:min-w-0",
+                          selectedUser?.role === r
+                            ? "border-ink-900 bg-ink-900 text-white dark:border-brass-400 dark:bg-brass-500 dark:text-ink-900"
+                            : "border-ink-200 text-ink-700 hover:bg-ink-50 dark:border-ink-600 dark:text-ink-300 dark:hover:bg-ink-800"
+                        )}
+                      >
+                        {togglingId === `role-${r}` && <Loader2 className="size-3 animate-spin" />}
+                        {r.charAt(0).toUpperCase() + r.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2 border-b border-ink-100 pb-4">
+                <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">Cash Advance (EGP)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className={inputClassName}
+                    value={cashAdvanceInput}
+                    onChange={(e) => setCashAdvanceInput(e.target.value)}
+                  />
+                  <ActionButton 
+                    disabled={submitting} 
+                    onClick={updateCashAdvance}
+                  >
+                    {togglingId === 'cash-advance' ? <Loader2 className="size-4 animate-spin" /> : 'Save'}
+                  </ActionButton>
                 </div>
-              )}
-            </div>
+              </div>
+            </>
           )}
 
           <div className="space-y-4">

@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { getLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
-import { getUserRole } from "@/lib/supabase/queries";
+import { getCurrentUser } from "@/lib/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
 import { Link } from "@/i18n/routing";
 import { encodeId } from "@/lib/id-utils";
@@ -26,9 +26,9 @@ export default async function AdminTransactionsPage({
   searchParams: Promise<{ query?: string; date?: string; type?: string }>;
 }) {
   const { query, date, type } = await searchParams;
-  const role = await getUserRole();
+  const user = await getCurrentUser();
   
-  if (role !== "admin" && role !== "superadmin") {
+  if (user?.role !== "admin" && user?.role !== "superadmin") {
     redirect("/dashboard");
   }
 
@@ -37,6 +37,10 @@ export default async function AdminTransactionsPage({
     .from("transactions")
     .select("*, clients(name, profit), users!transactions_created_by_fkey(full_name)")
     .order("date", { ascending: false });
+
+  if (user.role !== "superadmin") {
+    dbQuery = dbQuery.eq("created_by", user.id);
+  }
 
   if (date) dbQuery = dbQuery.eq('date', date);
   if (type === 'payment' || type === 'expense') {
@@ -84,7 +88,7 @@ export default async function AdminTransactionsPage({
             <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
               {tCharts("systemIncomeExpense")}
             </h3>
-            <IncomeExpenseBarChart transactions={transactions} />
+            <IncomeExpenseBarChart transactions={transactions} showPayments={user?.role === "superadmin"} />
           </CardContent>
         </Card>
         <Card>

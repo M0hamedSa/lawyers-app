@@ -87,7 +87,13 @@ export function TransactionDistributionChart({ transactions }: { transactions: L
 }
 
 // --- Income vs Expense Bar Chart ---
-export function IncomeExpenseBarChart({ transactions }: { transactions: LedgerTransaction[] }) {
+export function IncomeExpenseBarChart({ 
+  transactions,
+  showPayments = true,
+}: { 
+  transactions: LedgerTransaction[];
+  showPayments?: boolean;
+}) {
   const locale = useLocale();
   const t = useTranslations("Charts");
   const isRtl = locale === "ar";
@@ -148,7 +154,9 @@ export function IncomeExpenseBarChart({ transactions }: { transactions: LedgerTr
               <span className={`text-sm ${isRtl ? 'mr-1.5' : 'ml-1.5'}`}>{value}</span>
             )}
           />
-          <Bar dataKey="payments" fill={COLORS.payment} radius={[4, 4, 0, 0]} name={t("income")} />
+          {showPayments && (
+            <Bar dataKey="payments" fill={COLORS.payment} radius={[4, 4, 0, 0]} name={t("income")} />
+          )}
           <Bar dataKey="expenses" fill={COLORS.expense} radius={[4, 4, 0, 0]} name={t("expense")} />
         </BarChart>
       </ResponsiveContainer>

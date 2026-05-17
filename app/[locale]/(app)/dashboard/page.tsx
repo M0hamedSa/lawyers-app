@@ -26,8 +26,8 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label={t("totalClients")} value={String(data.totalClients)} />
         <MetricCard label={t("totalBalance")} value={formatCurrency(data.totalBalance, locale)} />
-        <MetricCard label={t("totalPayments")} value={formatCurrency(data.totalPayments, locale)} />
-        <MetricCard label={t("totalExpenses")} value={formatCurrency(data.totalExpenses, locale)} />
+        <MetricCard label={data.userRole === "superadmin" ? t("totalPayments") : "Cash Advance"} value={formatCurrency(data.totalPayments, locale)} />
+        <MetricCard label={data.userRole === "superadmin" ? t("totalExpenses") : "My Expenses"} value={formatCurrency(data.totalExpenses, locale)} />
       </div>
 
       <Card>
@@ -35,7 +35,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
           <CardTitle>{locale === 'ar' ? t_charts("incomeExpense") : "Payments vs Expenses over time"}</CardTitle>
         </CardHeader>
         <CardContent>
-          <BalanceChart data={data.chartData} />
+          <BalanceChart data={data.chartData} showPayments={data.userRole === "superadmin"} />
         </CardContent>
       </Card>
     </div>

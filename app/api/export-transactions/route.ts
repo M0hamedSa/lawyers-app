@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserRole } from '@/lib/supabase/queries';
+import { getCurrentUser } from '@/lib/supabase/queries';
 import { createClient } from '@/lib/supabase/server';
 import chromium from '@sparticuz/chromium-min';
 import puppeteer from 'puppeteer-core';
@@ -10,8 +10,8 @@ export const maxDuration = 60; // Allow up to 60 seconds for PDF generation
 
 export async function GET(request: Request) {
   try {
-    const role = await getUserRole();
-    if (role !== "admin" && role !== "superadmin") {
+    const user = await getCurrentUser();
+    if (user?.role !== "admin" && user?.role !== "superadmin") {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
@@ -43,6 +43,10 @@ export async function GET(request: Request) {
       .from("transactions")
       .select("*, clients(name, profit), users!transactions_created_by_fkey(full_name)")
       .order("date", { ascending: false });
+
+    if (user.role !== "superadmin") {
+      dbQuery = dbQuery.eq('created_by', user.id);
+    }
 
     if (clientId) dbQuery = dbQuery.eq('client_id', clientId);
     if (date) dbQuery = dbQuery.eq('date', date);
@@ -76,7 +80,7 @@ export async function GET(request: Request) {
       if (t.type === 'payment') totalIncome += Number(t.amount);
       if (t.type === 'expense') totalExpense += Number(t.amount);
       
-      if (role === 'superadmin' && t.client_id) {
+      if (user.role === 'superadmin' && t.client_id) {
         if (!uniqueClientIds.has(t.client_id)) {
           uniqueClientIds.add(t.client_id);
           const clientProfit = t.clients?.profit || 0;
@@ -85,8 +89,10 @@ export async function GET(request: Request) {
       }
     });
 
-    if (role === 'superadmin') {
+    if (user.role === 'superadmin') {
       totalIncome = Math.max(0, totalIncome - totalProfit);
+    } else {
+      totalIncome = user.cash_advance || 0;
     }
 
     const isRtl = locale === 'ar';
@@ -226,11 +232,11 @@ export async function GET(request: Request) {
         
         <div class="summary-grid">
           <div class="summary-card">
-            <div class="summary-label">${t('Dashboard.totalPayments')}</div>
+            <div class="summary-label">${user.role === 'superadmin' ? t('Dashboard.totalPayments') : 'Cash Advance'}</div>
             <div class="summary-value income">+${totalIncome.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-card">
-            <div class="summary-label">${t('Dashboard.totalExpenses')}</div>
+            <div class="summary-label">${user.role === 'superadmin' ? t('Dashboard.totalExpenses') : 'My Expenses'}</div>
             <div class="summary-value expense">-${totalExpense.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-card">

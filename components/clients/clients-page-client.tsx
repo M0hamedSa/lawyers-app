@@ -215,43 +215,43 @@ export function ClientsPageClient({
                   </div>
                 ),
               },
-              {
-                key: "payments",
-                header: t("columns.payments"),
-                cell: (client) => {
-                  const profitToDeduct = userRole === "superadmin" ? Number(client.profit || 0) : 0;
-                  const adjustedPayments = Math.max(0, client.total_payments - profitToDeduct);
-                  return (
-                    <span className="font-medium tabular-nums text-green-700 dark:text-green-400">
-                      {formatCurrency(adjustedPayments, locale)}
-                    </span>
-                  );
-                },
-              },
-              {
-                key: "expenses",
-                header: t("columns.expenses"),
-                cell: (client) => (
-                  <span className="font-medium tabular-nums text-red-700 dark:text-red-400">
-                    {formatCurrency(client.total_expenses, locale)}
-                  </span>
-                ),
-              },
-              {
-                key: "balance",
-                header: t("columns.balance"),
-                cell: (client) => {
-                  const profitToDeduct = userRole === "superadmin" ? Number(client.profit || 0) : 0;
-                  const adjustedBalance = client.balance - profitToDeduct;
-                  return (
-                    <span className="font-semibold tabular-nums text-ink-900 dark:text-ink-50">
-                      {formatCurrency(adjustedBalance, locale)}
-                    </span>
-                  );
-                },
-              },
               ...(userRole === "superadmin"
                 ? [
+                    {
+                      key: "payments",
+                      header: t("columns.payments"),
+                      cell: (client: ClientWithSummary) => {
+                        const profitToDeduct = Number(client.profit || 0);
+                        const adjustedPayments = Math.max(0, client.total_payments - profitToDeduct);
+                        return (
+                          <span className="font-medium tabular-nums text-green-700 dark:text-green-400">
+                            {formatCurrency(adjustedPayments, locale)}
+                          </span>
+                        );
+                      },
+                    },
+                    {
+                      key: "expenses",
+                      header: t("columns.expenses"),
+                      cell: (client: ClientWithSummary) => (
+                        <span className="font-medium tabular-nums text-red-700 dark:text-red-400">
+                          {formatCurrency(client.total_expenses, locale)}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: "balance",
+                      header: t("columns.balance"),
+                      cell: (client: ClientWithSummary) => {
+                        const profitToDeduct = Number(client.profit || 0);
+                        const adjustedBalance = client.balance - profitToDeduct;
+                        return (
+                          <span className="font-semibold tabular-nums text-ink-900 dark:text-ink-50">
+                            {formatCurrency(adjustedBalance, locale)}
+                          </span>
+                        );
+                      },
+                    },
                     {
                       key: "profit",
                       header: t("form.profit") || "Profit",
@@ -262,7 +262,17 @@ export function ClientsPageClient({
                       ),
                     },
                   ]
-                : []),
+                : [
+                    {
+                      key: "expenses",
+                      header: "My Expenses",
+                      cell: (client: ClientWithSummary) => (
+                        <span className="font-medium tabular-nums text-red-700 dark:text-red-400">
+                          {formatCurrency(client.total_expenses, locale)}
+                        </span>
+                      ),
+                    }
+                  ].filter(Boolean) as any),
               {
                 key: "actions",
                 header: "",
