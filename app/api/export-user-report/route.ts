@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/supabase/queries';
+import { getCurrentUser, getDashboardData } from '@/lib/supabase/queries';
 import { createClient } from '@/lib/supabase/server';
 import fs from 'fs';
 import path from 'path';
@@ -14,10 +14,6 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('query') || '';
-    const date = searchParams.get('date') || '';
-    const type = searchParams.get('type') || '';
-    const clientId = searchParams.get('client_id') || '';
     const locale = searchParams.get('locale') || 'en';
 
     // Load translations
@@ -36,81 +32,43 @@ export async function GET(request: Request) {
       return (val as string) || key;
     };
 
+    // Retrieve active dashboard data (scoped securely to current user via session)
+    const data = await getDashboardData();
+
+    // Query detailed expense transactions securely
     const supabase = await createClient();
-    let dbQuery = supabase
+    let txQuery = supabase
       .from("transactions")
-      .select("*, clients(name, profit), users!transactions_created_by_fkey(full_name)")
-      .order("date", { ascending: false });
+      .select("*, clients(name), users!transactions_created_by_fkey(full_name)")
+      .eq("type", "expense")
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (user.role !== "superadmin") {
-      dbQuery = dbQuery.eq('created_by', user.id);
+      txQuery = txQuery.eq("created_by", user.id);
     }
 
-    if (clientId) {
-      dbQuery = dbQuery.eq('client_id', clientId).neq('type', 'payment');
-    }
-    if (date) dbQuery = dbQuery.eq('date', date);
-    if (type === 'payment' || type === 'expense') {
-      dbQuery = dbQuery.eq('type', type);
-    }
-
-    const { data: transactions, error: dbError } = await dbQuery;
-
-    if (dbError) throw new Error(dbError.message);
-
-    // Apply text search filter if present (Supabase text search is more complex, so we'll keep this part in JS for simplicity or use .ilike)
-    let filteredTransactions = transactions || [];
-    if (query) {
-      const q = query.toLowerCase();
-      filteredTransactions = filteredTransactions.filter(t => 
-        t.clients.name.toLowerCase().includes(q) || 
-        (t.users?.full_name || "").toLowerCase().includes(q) ||
-        (t.description || "").toLowerCase().includes(q)
-      );
-    }
-
-    const transactionsToReport = filteredTransactions;
-
-    let totalIncome = 0;
-    let totalExpense = 0;
-    let totalProfit = 0;
-    const uniqueClientIds = new Set();
-    
-    transactionsToReport.forEach(t => {
-      if (t.type === 'payment') totalIncome += Number(t.amount);
-      if (t.type === 'expense') totalExpense += Number(t.amount);
-      
-      if (user.role === 'superadmin' && t.client_id) {
-        if (!uniqueClientIds.has(t.client_id)) {
-          uniqueClientIds.add(t.client_id);
-          const clientProfit = t.clients?.profit || 0;
-          totalProfit += Number(clientProfit);
-        }
-      }
-    });
-
-    if (user.role === 'superadmin') {
-      totalIncome = Math.max(0, totalIncome - totalProfit);
-    } else {
-      totalIncome = user.cash_advance || 0;
-    }
-
-    const isClientReport = !!clientId;
-    const isSuperAdmin = user.role === 'superadmin';
-    const showProfitCard = isClientReport && isSuperAdmin;
-
-    const firstCardLabel = showProfitCard 
-      ? (t('Clients.form.profit') || 'Profit')
-      : (isSuperAdmin ? t('Dashboard.totalPayments') : 'Cash Advance');
-
-    const firstCardValue = showProfitCard
-      ? totalProfit
-      : totalIncome;
+    const { data: detailedExpenses, error: txError } = await txQuery;
+    if (txError) throw new Error(txError.message);
 
     const isRtl = locale === 'ar';
-    const reportTitle = clientId && transactionsToReport.length > 0 
-      ? `${transactionsToReport[0].clients.name} - ${t('Admin.exportReport')}`
-      : t('Admin.exportReport');
+    const isSuperAdmin = data.userRole === 'superadmin';
+
+    // Labels and titles based on role and locale
+    const reportTitle = isSuperAdmin 
+      ? (isRtl ? 'تقرير ملخص لوحة التحكم للشركة' : 'Firm Dashboard Summary Report')
+      : (isRtl ? 'تقرير ملخص لوحة التحكم الخاصة بي' : 'My Dashboard Summary Report');
+
+    const labelPayments = isSuperAdmin 
+      ? (t('Dashboard.totalPayments') || 'Total Payments')
+      : (isRtl ? 'العهدة المالية' : 'Cash Advance');
+
+    const labelExpenses = isSuperAdmin
+      ? (t('Dashboard.totalExpenses') || 'Total Expenses')
+      : (isRtl ? 'مصروفاتي' : 'My Expenses');
+
+    const labelClients = t('Dashboard.totalClients') || 'Total Clients';
+    const labelBalance = t('Dashboard.totalBalance') || 'Total Balance';
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -149,38 +107,38 @@ export async function GET(request: Request) {
           }
           .title-area h1 { 
             margin: 0; 
-            font-size: 28px; 
+            font-size: 24px; 
             font-weight: 700;
             color: var(--ink-900);
           }
           .meta { 
             color: var(--ink-500); 
-            font-size: 14px; 
+            font-size: 13px; 
             margin-top: 5px;
           }
           .summary-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+            gap: 15px;
             margin-bottom: 40px;
           }
           .summary-card {
             background: var(--card-bg);
-            padding: 20px;
-            border-radius: 12px;
+            padding: 16px;
+            border-radius: 10px;
             text-align: center;
             border: 1px solid var(--ink-100);
           }
           .summary-label {
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
             color: var(--ink-500);
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             letter-spacing: 0.05em;
           }
           .summary-value {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             color: var(--ink-900);
             white-space: nowrap;
@@ -198,34 +156,33 @@ export async function GET(request: Request) {
             color: var(--ink-700);
             font-weight: 700;
             text-transform: uppercase;
-            font-size: 11px;
-            padding: 14px 12px;
+            font-size: 10px;
+            padding: 12px 10px;
             text-align: ${isRtl ? 'right' : 'left'};
             border-bottom: 2px solid var(--ink-100);
             letter-spacing: 0.05em;
             white-space: nowrap;
           }
           td { 
-            padding: 14px 12px; 
+            padding: 12px 10px; 
             border-bottom: 1px solid var(--ink-100);
             color: var(--ink-700);
-            font-size: 13px;
+            font-size: 12px;
           }
-          .amount-cell {
-            text-align: ${isRtl ? 'left' : 'right'};
+          .numeric-cell {
             font-weight: 600;
             font-family: ${isRtl ? "'Cairo', sans-serif" : "'Inter', sans-serif"};
             white-space: nowrap;
           }
-          .payment { color: #059669; }
-          .expense { color: #dc2626; }
+          .negative { color: #dc2626; }
+          .positive { color: #059669; }
           
           .footer {
             margin-top: 50px;
             padding-top: 20px;
             border-top: 1px solid var(--ink-100);
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--ink-500);
           }
         </style>
@@ -234,56 +191,66 @@ export async function GET(request: Request) {
         <div class="header">
           <div class="title-area">
             <h1>${reportTitle}</h1>
-            <div class="meta">${t('Dashboard.title')} · ${new Date().toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short' })}</div>
+            <div class="meta">${t('Sidebar.subtitle')} · ${new Date().toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short' })}</div>
           </div>
           <div style="text-align: ${isRtl ? 'left' : 'right'}">
             <div style="font-weight: 700; color: var(--primary); font-size: 18px;">${t('Sidebar.appName')}</div>
-            <div style="font-size: 12px; color: var(--ink-500);">${t('Sidebar.subtitle')}</div>
+            <div style="font-size: 12px; color: var(--ink-500);">${user.full_name} (${data.userRole || ''})</div>
           </div>
         </div>
         
         <div class="summary-grid">
           <div class="summary-card">
-            <div class="summary-label">${firstCardLabel}</div>
-            <div class="summary-value income">+${firstCardValue.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${labelClients}</div>
+            <div class="summary-value">${data.totalClients}</div>
           </div>
           <div class="summary-card">
-            <div class="summary-label">${isSuperAdmin ? t('Dashboard.totalExpenses') : 'My Expenses'}</div>
-            <div class="summary-value expense">-${totalExpense.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${labelPayments}</div>
+            <div class="summary-value income">+${data.totalPayments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-card">
-            <div class="summary-label">${t('Dashboard.totalBalance')}</div>
-            <div class="summary-value">${(totalIncome - totalExpense).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${labelExpenses}</div>
+            <div class="summary-value expense">-${data.totalExpenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-card">
-            <div class="summary-label">${t('ClientDetails.transactions')}</div>
-            <div class="summary-value">${transactionsToReport.length}</div>
+            <div class="summary-label">${labelBalance}</div>
+            <div class="summary-value">${data.totalBalance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
         </div>
+
+        <h3 style="margin-top: 40px; font-size: 16px; border-bottom: 1px solid var(--ink-100); padding-bottom: 8px;">
+          ${isRtl ? 'تفاصيل المصروفات' : 'Detailed Expense Transactions'}
+        </h3>
 
         <table>
           <thead>
             <tr>
-              <th>${t('Transaction.columns.date')}</th>
-              <th>${t('Clients.columns.client')}</th>
-              <th>${t('Transaction.columns.type')}</th>
-              <th>${t('Transaction.columns.description')}</th>
-              <th class="amount-cell">${t('Transaction.columns.amount')}</th>
+              <th>${t('Transaction.columns.date') || 'Date'}</th>
+              <th>${t('Clients.columns.client') || 'Client'}</th>
+              ${isSuperAdmin ? `<th>${isRtl ? 'بواسطة' : 'By'}</th>` : ''}
+              <th>${t('Transaction.columns.description') || 'Description'}</th>
+              <th style="text-align: ${isRtl ? 'left' : 'right'}">${t('Transaction.columns.amount') || 'Amount'}</th>
             </tr>
           </thead>
           <tbody>
-            ${transactionsToReport.map(t_row => `
+            ${(detailedExpenses || []).map(tx => `
               <tr>
-                <td>${new Date(t_row.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                <td>${t_row.clients?.name || ''}</td>
-                <td>${t(t_row.type === 'payment' ? 'Common.payment' : 'Common.expense')}</td>
-                <td>${t_row.description}</td>
-                <td class="amount-cell ${t_row.type === 'payment' ? 'payment' : 'expense'}">
-                  ${t_row.type === 'payment' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
+                <td>${new Date(tx.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                <td>${tx.clients?.name || '-'}</td>
+                ${isSuperAdmin ? `<td>${tx.users?.full_name || '-'}</td>` : ''}
+                <td>${tx.description || '-'}</td>
+                <td class="numeric-cell negative" style="text-align: ${isRtl ? 'left' : 'right'}">
+                  -${Number(tx.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
                 </td>
               </tr>
             `).join('')}
-            ${transactionsToReport.length === 0 ? `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults')}</td></tr>` : ''}
+            ${(detailedExpenses || []).length === 0 ? `
+              <tr>
+                <td colspan="${isSuperAdmin ? 5 : 4}" style="text-align: center; padding: 30px; color: var(--ink-500);">
+                  ${isRtl ? 'لا يوجد مصروفات مسجلة حالياً' : 'No expenses recorded currently'}
+                </td>
+              </tr>
+            ` : ''}
           </tbody>
         </table>
 
@@ -300,7 +267,6 @@ export async function GET(request: Request) {
       const chromium = (await import('@sparticuz/chromium-min')).default;
       const puppeteer = (await import('puppeteer-core')).default;
 
-      // Register Arabic font for production
       try {
         const fontPath = path.join(process.cwd(), 'fonts', 'Cairo.ttf');
         if (fs.existsSync(fontPath)) {
@@ -311,8 +277,6 @@ export async function GET(request: Request) {
         console.error('Failed to register font:', fontError);
       }
 
-      // When using @sparticuz/chromium-min, we must provide a remote URL to the chromium binary pack
-      // We use x64 as it's the standard for Vercel serverless functions
       const CHROMIUM_PACK_URL = 'https://github.com/Sparticuz/chromium/releases/download/v148.0.0/chromium-v148.0.0-pack.x64.tar';
       
       let executablePath;
@@ -344,8 +308,6 @@ export async function GET(request: Request) {
     const page = await browser.newPage();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' as any });
-    
-    // Wait for fonts to be loaded
     await page.evaluateHandle('document.fonts.ready');
     
     const pdfBuffer = await page.pdf({ 
@@ -356,15 +318,20 @@ export async function GET(request: Request) {
     
     await browser.close();
 
+    const cleanName = user.full_name.trim().replace(/\s+/g, '_');
+    const filename = isRtl 
+      ? `تقرير_ملخص_${cleanName}.pdf` 
+      : `summary_report_${cleanName}.pdf`;
+
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="report.pdf"`,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
       },
     });
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error('Error generating user summary PDF:', error);
     return new NextResponse('Error generating PDF: ' + (error as Error).message, { status: 500 });
   }
 }

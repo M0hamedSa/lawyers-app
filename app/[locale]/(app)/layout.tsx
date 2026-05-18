@@ -30,8 +30,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main
         className={
           isRtl
-            ? "min-h-screen pt-14 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5 lg:pr-72 lg:pl-8 lg:pb-6 lg:pt-[calc(3.5rem+1.5rem)]"
-            : "min-h-screen pt-14 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5 lg:pl-72 lg:pr-8 lg:pb-6 lg:pt-[calc(3.5rem+1.5rem)]"
+            ? "min-h-screen pt-14 px-3 pb-24 sm:px-5 lg:pr-72 lg:pl-8 lg:pb-6 lg:pt-[calc(3.5rem+1.5rem)]"
+            : "min-h-screen pt-14 px-3 pb-24 sm:px-5 lg:pl-72 lg:pr-8 lg:pb-6 lg:pt-[calc(3.5rem+1.5rem)]"
         }
       >
         <div className="mx-auto max-w-7xl">{children}</div>

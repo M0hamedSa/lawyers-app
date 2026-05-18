@@ -136,7 +136,7 @@ export function ClientSelector({ clients = [] }: { clients?: SimpleClient[] }) {
   return (
     <div
       ref={containerRef}
-      className="relative w-40 sm:w-64 text-ink-900 dark:text-ink-50"
+      className="relative flex-1 max-w-[160px] sm:max-w-xs text-ink-900 dark:text-ink-50"
       dir={isRtl ? "rtl" : "ltr"}
     >
       {/* Trigger Button */}

@@ -177,8 +177,8 @@ export function Navbar({
         {/* Balance pill — non-superadmin only */}
         {userRole !== "superadmin" && financials && (
           <>
-            <div className="h-6 w-px bg-ink-200 dark:bg-ink-700" />
-            <div className="flex items-center gap-1.5 rounded-full border border-ink-200 bg-ink-50 px-3 py-1 dark:border-ink-700 dark:bg-ink-800/60">
+            <div className="hidden h-6 w-px bg-ink-200 dark:bg-ink-700 sm:block" />
+            <div className="hidden items-center gap-1.5 rounded-full border border-ink-200 bg-ink-50 px-3 py-1 dark:border-ink-700 dark:bg-ink-800/60 sm:flex">
               <Wallet className="size-3.5 shrink-0 text-brass-600 dark:text-brass-400" />
               <span className="text-xs font-semibold tabular-nums text-ink-900 dark:text-ink-50">
                 {formatCurrency(financials.balance, locale)}

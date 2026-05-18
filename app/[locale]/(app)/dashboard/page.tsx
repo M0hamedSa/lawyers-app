@@ -3,6 +3,7 @@ import { BalanceChart } from "@/components/dashboard/balance-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/supabase/queries";
 import { formatCurrency } from "@/lib/utils";
+import { ExportUserReportButton } from "@/components/dashboard/export-user-report-button";
 
 export const dynamic = "force-dynamic";
 
@@ -13,17 +14,24 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   const t_charts = await getTranslations("Charts");
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-brass-700 dark:text-brass-400">
-          {t("title")}
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
-          {t("title")}
-        </h1>
+    <div className="space-y-5">
+      {/* Header aligned inline on small screens */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-brass-700 dark:text-brass-400 sm:text-sm">
+            {t("title")}
+          </p>
+          <h1 className="mt-0.5 text-xl font-bold tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
+            {t("title")}
+          </h1>
+        </div>
+        <div className="shrink-0">
+          <ExportUserReportButton />
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {/* Grid displays as 2x2 on mobile, 4 columns on desktop */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label={t("totalClients")} value={String(data.totalClients)} />
         <MetricCard label={t("totalBalance")} value={formatCurrency(data.totalBalance, locale)} />
         <MetricCard label={data.userRole === "superadmin" ? t("totalPayments") : "Cash Advance"} value={formatCurrency(data.totalPayments, locale)} />
@@ -31,10 +39,10 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>{locale === 'ar' ? t_charts("incomeExpense") : "Payments vs Expenses over time"}</CardTitle>
+        <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-4">
+          <CardTitle className="text-sm font-semibold sm:text-base">{locale === 'ar' ? t_charts("incomeExpense") : "Payments vs Expenses over time"}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-2 sm:p-6 pt-0">
           <BalanceChart data={data.chartData} showPayments={data.userRole === "superadmin"} />
         </CardContent>
       </Card>
@@ -44,10 +52,10 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <Card>
-      <CardContent>
-        <p className="text-sm text-ink-700 dark:text-ink-300">{label}</p>
-        <p className="mt-2 break-words text-xl font-semibold tabular-nums text-ink-900 dark:text-ink-50 sm:text-2xl">
+    <Card className="overflow-hidden">
+      <CardContent className="p-3.5 sm:p-6">
+        <p className="text-[11px] font-medium text-ink-500 dark:text-ink-400 sm:text-sm truncate">{label}</p>
+        <p className="mt-1 break-words text-sm font-bold tabular-nums text-ink-900 dark:text-ink-50 sm:text-2xl">
           {value}
         </p>
       </CardContent>
