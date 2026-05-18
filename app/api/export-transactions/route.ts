@@ -11,7 +11,7 @@ export const maxDuration = 60; // Allow up to 60 seconds for PDF generation
 export async function GET(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (user?.role !== "admin" && user?.role !== "superadmin") {
+    if (!user) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
@@ -48,7 +48,9 @@ export async function GET(request: Request) {
       dbQuery = dbQuery.eq('created_by', user.id);
     }
 
-    if (clientId) dbQuery = dbQuery.eq('client_id', clientId);
+    if (clientId) {
+      dbQuery = dbQuery.eq('client_id', clientId).neq('type', 'payment');
+    }
     if (date) dbQuery = dbQuery.eq('date', date);
     if (type === 'payment' || type === 'expense') {
       dbQuery = dbQuery.eq('type', type);
@@ -94,6 +96,18 @@ export async function GET(request: Request) {
     } else {
       totalIncome = user.cash_advance || 0;
     }
+
+    const isClientReport = !!clientId;
+    const isSuperAdmin = user.role === 'superadmin';
+    const showProfitCard = isClientReport && isSuperAdmin;
+
+    const firstCardLabel = showProfitCard 
+      ? (t('Clients.form.profit') || 'Profit')
+      : (isSuperAdmin ? t('Dashboard.totalPayments') : 'Cash Advance');
+
+    const firstCardValue = showProfitCard
+      ? totalProfit
+      : totalIncome;
 
     const isRtl = locale === 'ar';
     const reportTitle = clientId && transactionsToReport.length > 0 
@@ -232,11 +246,11 @@ export async function GET(request: Request) {
         
         <div class="summary-grid">
           <div class="summary-card">
-            <div class="summary-label">${user.role === 'superadmin' ? t('Dashboard.totalPayments') : 'Cash Advance'}</div>
-            <div class="summary-value income">+${totalIncome.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${firstCardLabel}</div>
+            <div class="summary-value income">+${firstCardValue.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-card">
-            <div class="summary-label">${user.role === 'superadmin' ? t('Dashboard.totalExpenses') : 'My Expenses'}</div>
+            <div class="summary-label">${isSuperAdmin ? t('Dashboard.totalExpenses') : 'My Expenses'}</div>
             <div class="summary-value expense">-${totalExpense.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-card">
