@@ -34,6 +34,11 @@
     "invalidLink": "This invitation link is invalid or has expired. Ask an admin to send a new invite, or sign in if you already have a password.",
     "goToLogin": "Go to sign in"
   },
+  "Navbar": {
+    "searchClient": "Quick client access...",
+    "noClientsFound": "No clients found",
+    "placeholder": "Search client by name..."
+  },
   "Sidebar": {
     "appName": "Law Ledger",
     "subtitle": "Client finance office",

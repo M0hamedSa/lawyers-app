@@ -13,7 +13,9 @@ type ClientRow = {
   transactions: { amount: number; type: "payment" | "expense"; created_by?: string }[];
 };
 
-function withSummary(client: ClientRow, currentUser: any = null): ClientWithSummary {
+type SummaryUser = { id: string; role: string };
+
+function withSummary(client: ClientRow, currentUser: SummaryUser | null = null): ClientWithSummary {
   const totals = client.transactions.reduce(
     (acc, transaction) => {
       // If not superadmin, only sum their own transactions

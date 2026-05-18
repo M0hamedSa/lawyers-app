@@ -7,15 +7,18 @@ import { LogOut, Moon, Sun, Globe, ChevronDown, Wallet } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { signOutAction } from "@/app/[locale]/(auth)/login/actions";
 import { THEME_STORAGE_KEY, applyTheme } from "./theme-toggle";
+import { ClientSelector } from "./client-selector";
 
 export function Navbar({
   userRole,
   userName,
   financials,
+  clients = [],
 }: {
   userRole: "superadmin" | "admin" | "user" | null;
   userName: string;
   financials: { cashAdvance: number; totalExpenses: number; balance: number } | null;
+  clients?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -60,6 +63,9 @@ export function Navbar({
       )}
       dir={isRtl ? "rtl" : "ltr"}
     >
+      {/* Client Selector (Quick Access) */}
+      <ClientSelector clients={clients} />
+
       {/* Spacer */}
       <div className="flex-1" />
 

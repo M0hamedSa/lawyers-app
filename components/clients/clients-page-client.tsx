@@ -272,7 +272,12 @@ export function ClientsPageClient({
                         </span>
                       ),
                     }
-                  ].filter(Boolean) as any),
+                  ].filter(Boolean) as {
+                    key: string;
+                    header: string;
+                    cell: (row: ClientWithSummary) => React.ReactNode;
+                    className?: string;
+                  }[]),
               {
                 key: "actions",
                 header: "",

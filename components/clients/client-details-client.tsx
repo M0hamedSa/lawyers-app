@@ -19,7 +19,6 @@ import type {
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { ExportTransactionsButton } from "@/components/admin/export-transactions-button";
 import { 
-  TransactionDistributionChart, 
   IncomeExpenseBarChart, 
   BalanceHistoryChart 
 } from "@/components/charts/transaction-charts";
@@ -71,16 +70,17 @@ export function ClientDetailsClient({
   const locale = useLocale();
 
   const userRole = currentUser?.role || null;
-  const filteredInitialTransactions = userRole === "superadmin" 
+  const filteredInitialTransactions = (userRole === "superadmin" 
     ? initialTransactions 
-    : initialTransactions.filter(t => t.created_by === currentUser?.id);
+    : initialTransactions.filter(t => t.created_by === currentUser?.id)
+  ).filter(t => t.type === "expense");
 
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [transactions, setTransactions] = useState(filteredInitialTransactions);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<TransactionForm>({
     ...emptyTransaction,
-    type: userRole === "superadmin" ? "payment" : "expense"
+    type: "expense"
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +100,7 @@ export function ClientDetailsClient({
           if (payload.eventType === "INSERT") {
             const next = payload.new as LedgerTransaction;
             if (userRole !== "superadmin" && next.created_by !== currentUser?.id) return;
+            if (next.type !== "expense") return;
             setTransactions((current) =>
               current.some((transaction) => transaction.id === next.id)
                 ? current
@@ -109,6 +110,10 @@ export function ClientDetailsClient({
 
           if (payload.eventType === "UPDATE") {
             const next = payload.new as LedgerTransaction;
+            if (next.type !== "expense") {
+              setTransactions((current) => current.filter((t) => t.id !== next.id));
+              return;
+            }
             setTransactions((current) =>
               current.map((transaction) => (transaction.id === next.id ? next : transaction)),
             );
@@ -129,7 +134,7 @@ export function ClientDetailsClient({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [client.id, router, supabase]);
+  }, [client.id, router, supabase, userRole, currentUser?.id]);
 
   const totals = transactions.reduce(
     (acc, transaction) => {
@@ -142,7 +147,7 @@ export function ClientDetailsClient({
 
   let balance = 0;
   let displayPayments = 0;
-  let displayExpenses = totals.expenses;
+  const displayExpenses = totals.expenses;
   const profitToDeduct = userRole === "superadmin" ? Number(client.profit || 0) : 0;
 
   if (userRole === "superadmin") {
@@ -203,7 +208,7 @@ export function ClientDetailsClient({
     setTransactions((current) => [data, ...current]);
     setForm({
       ...emptyTransaction,
-      type: userRole === "superadmin" ? "payment" : "expense"
+      type: "expense"
     });
     setModalOpen(false);
     router.refresh();
@@ -242,8 +247,10 @@ export function ClientDetailsClient({
         </div>
       </div>
 
-      <div className={cn("grid gap-4", userRole === "superadmin" ? "md:grid-cols-4" : "md:grid-cols-3")}>
-        <FinanceMetric label={userRole === "superadmin" ? t("totalPayments") : "Cash Advance"} value={formatCurrency(displayPayments, locale)} tone="payment" />
+      <div className="grid gap-4 md:grid-cols-3">
+        {userRole !== "superadmin" && (
+          <FinanceMetric label="Cash Advance" value={formatCurrency(displayPayments, locale)} tone="payment" />
+        )}
         <FinanceMetric label={userRole === "superadmin" ? t("totalExpenses") : "My Expenses"} value={formatCurrency(displayExpenses, locale)} tone="expense" />
         {userRole === "superadmin" && (
           <FinanceMetric label={tClients("form.profit") || "Profit"} value={formatCurrency(Number(client.profit || 0), locale)} tone="payment" />
@@ -297,34 +304,7 @@ export function ClientDetailsClient({
 
       <Modal title={t("addTransaction")} open={modalOpen} onClose={() => setModalOpen(false)}>
         <form onSubmit={saveTransaction} className="space-y-4">
-          <div className={cn("grid gap-3", userRole === "superadmin" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
-            {userRole === "superadmin" && (
-              <button
-                type="button"
-                onClick={() => setForm((current) => ({ ...current, type: "payment" }))}
-                className={cn(
-                  "h-10 rounded-md border text-sm font-semibold",
-                  form.type === "payment"
-                    ? "border-green-700 bg-green-50 text-green-800 dark:border-green-600 dark:bg-green-950/40 dark:text-green-300"
-                    : "border-ink-100 text-ink-700 hover:bg-ink-50 dark:border-ink-600 dark:text-ink-300 dark:hover:bg-ink-800",
-                )}
-              >
-                {tCommon("payment")}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setForm((current) => ({ ...current, type: "expense" }))}
-              className={cn(
-                "h-10 rounded-md border text-sm font-semibold",
-                form.type === "expense"
-                  ? "border-red-700 bg-red-50 text-red-800 dark:border-red-600 dark:bg-red-950/40 dark:text-red-300"
-                  : "border-ink-100 text-ink-700 hover:bg-ink-50 dark:border-ink-600 dark:text-ink-300 dark:hover:bg-ink-800",
-              )}
-            >
-              {tCommon("expense")}
-            </button>
-          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={tCommon("amount")}>
               <input
@@ -465,19 +445,11 @@ function OverviewTab({
               <InfoItem label={t("created")} value={formatDate(client.created_at, locale)} />
             </dl>
             <div className="mt-8 space-y-8 border-t border-ink-100 pt-8">
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-xl border border-ink-100 bg-ink-50/30 p-4 dark:border-ink-800 dark:bg-ink-900/20">
-                  <h4 className="mb-4 text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-                    {useTranslations("Charts")("incomeExpense")}
-                  </h4>
-                  <IncomeExpenseBarChart transactions={transactions} showPayments={userRole === "superadmin"} />
-                </div>
-                <div className="rounded-xl border border-ink-100 bg-ink-50/30 p-4 dark:border-ink-800 dark:bg-ink-900/20">
-                  <h4 className="mb-4 text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-                    {useTranslations("Charts")("volumeDistribution")}
-                  </h4>
-                  <TransactionDistributionChart transactions={transactions} />
-                </div>
+              <div className="rounded-xl border border-ink-100 bg-ink-50/30 p-4 dark:border-ink-800 dark:bg-ink-900/20">
+                <h4 className="mb-4 text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
+                  {useTranslations("Charts")("incomeExpense")}
+                </h4>
+                <IncomeExpenseBarChart transactions={transactions} showPayments={false} />
               </div>
 
               <div className="rounded-xl border border-ink-100 bg-ink-50/30 p-4 dark:border-ink-800 dark:bg-ink-900/20">

@@ -1,13 +1,14 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Navbar } from "@/components/layout/navbar";
-import { getCurrentUser, getUserFinancials } from "@/lib/supabase/queries";
+import { getCurrentUser, getUserFinancials, getAdminClients } from "@/lib/supabase/queries";
 import { getLocale } from "next-intl/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [user, financials, locale] = await Promise.all([
+  const [user, financials, locale, clients] = await Promise.all([
     getCurrentUser(),
     getUserFinancials(),
     getLocale(),
+    getAdminClients(),
   ]);
 
   const isRtl = locale === "ar";
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         userRole={user?.role ?? null}
         userName={user?.full_name ?? ""}
         financials={financials}
+        clients={clients ?? []}
       />
 
       {/* Main — padded top for navbar (h-14), and side-padded for sidebar (w-64) */}
