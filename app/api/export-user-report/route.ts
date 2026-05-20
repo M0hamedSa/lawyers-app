@@ -54,18 +54,17 @@ export async function GET(request: Request) {
     const isRtl = locale === 'ar';
     const isSuperAdmin = data.userRole === 'superadmin';
 
-    // Labels and titles based on role and locale
-    const reportTitle = isSuperAdmin 
-      ? (isRtl ? 'تقرير ملخص لوحة التحكم للشركة' : 'Firm Dashboard Summary Report')
-      : (isRtl ? 'تقرير ملخص لوحة التحكم الخاصة بي' : 'My Dashboard Summary Report');
+    const reportTitle = isSuperAdmin
+      ? (t('Admin.firmReportTitle') || 'Firm Dashboard Summary Report')
+      : (t('Admin.myReportTitle') || 'My Dashboard Summary Report');
 
-    const labelPayments = isSuperAdmin 
+    const labelPayments = isSuperAdmin
       ? (t('Dashboard.totalPayments') || 'Total Payments')
-      : (isRtl ? 'العهدة المالية' : 'Cash Advance');
+      : (t('Common.cashAdvance') || 'Cash Advance');
 
     const labelExpenses = isSuperAdmin
       ? (t('Dashboard.totalExpenses') || 'Total Expenses')
-      : (isRtl ? 'مصروفاتي' : 'My Expenses');
+      : (t('Common.myExpenses') || 'My Expenses');
 
     const labelClients = t('Dashboard.totalClients') || 'Total Clients';
     const labelBalance = t('Dashboard.totalBalance') || 'Total Balance';
@@ -107,44 +106,50 @@ export async function GET(request: Request) {
           }
           .title-area h1 { 
             margin: 0; 
-            font-size: 24px; 
+            font-size: 28px; 
             font-weight: 700;
             color: var(--ink-900);
           }
           .meta { 
             color: var(--ink-500); 
-            font-size: 13px; 
+            font-size: 14px; 
             margin-top: 5px;
           }
-          .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
+          .summary-strip {
+            display: flex;
+            background: var(--card-bg);
+            border: 1px solid var(--ink-100);
+            border-radius: 12px;
+            padding: 24px 12px;
             margin-bottom: 40px;
           }
-          .summary-card {
-            background: var(--card-bg);
-            padding: 16px;
-            border-radius: 10px;
+          .summary-item {
+            flex: 1;
             text-align: center;
-            border: 1px solid var(--ink-100);
+            border-inline-end: 1px solid var(--ink-200);
+            padding: 0 10px;
+          }
+          .summary-item:last-child {
+            border-inline-end: none;
           }
           .summary-label {
-            font-size: 10px;
+            font-size: 11px;
             text-transform: uppercase;
             color: var(--ink-500);
-            font-weight: 700;
-            margin-bottom: 6px;
+            font-weight: 400;
+            margin-bottom: 8px;
             letter-spacing: 0.05em;
           }
           .summary-value {
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 400;
             color: var(--ink-900);
             white-space: nowrap;
           }
           .summary-value.income { color: #059669; }
           .summary-value.expense { color: #dc2626; }
+          .summary-value.balance-positive { color: #059669; }
+          .summary-value.balance-negative { color: #dc2626; }
           
           table { 
             width: 100%; 
@@ -156,20 +161,21 @@ export async function GET(request: Request) {
             color: var(--ink-700);
             font-weight: 700;
             text-transform: uppercase;
-            font-size: 10px;
-            padding: 12px 10px;
+            font-size: 11px;
+            padding: 14px 12px;
             text-align: ${isRtl ? 'right' : 'left'};
             border-bottom: 2px solid var(--ink-100);
             letter-spacing: 0.05em;
             white-space: nowrap;
           }
           td { 
-            padding: 12px 10px; 
+            padding: 14px 12px; 
             border-bottom: 1px solid var(--ink-100);
             color: var(--ink-700);
-            font-size: 12px;
+            font-size: 13px;
           }
           .numeric-cell {
+            text-align: ${isRtl ? 'left' : 'right'};
             font-weight: 600;
             font-family: ${isRtl ? "'Cairo', sans-serif" : "'Inter', sans-serif"};
             white-space: nowrap;
@@ -199,42 +205,44 @@ export async function GET(request: Request) {
           </div>
         </div>
         
-        <div class="summary-grid">
-          <div class="summary-card">
+        <div class="summary-strip">
+          <div class="summary-item">
             <div class="summary-label">${labelClients}</div>
             <div class="summary-value">${data.totalClients}</div>
           </div>
-          <div class="summary-card">
+          <div class="summary-item">
             <div class="summary-label">${labelPayments}</div>
             <div class="summary-value income">+${data.totalPayments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
-          <div class="summary-card">
+          <div class="summary-item">
             <div class="summary-label">${labelExpenses}</div>
             <div class="summary-value expense">-${data.totalExpenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
-          <div class="summary-card">
+          <div class="summary-item">
             <div class="summary-label">${labelBalance}</div>
-            <div class="summary-value">${data.totalBalance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-value ${data.totalBalance >= 0 ? 'balance-positive' : 'balance-negative'}">${data.totalBalance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
         </div>
 
         <h3 style="margin-top: 40px; font-size: 16px; border-bottom: 1px solid var(--ink-100); padding-bottom: 8px;">
-          ${isRtl ? 'تفاصيل المصروفات' : 'Detailed Expense Transactions'}
+          ${t('Common.detailedExpenses') || 'Detailed Expense Transactions'}
         </h3>
 
         <table>
           <thead>
             <tr>
+              <th style="width: 40px; text-align: center;">#</th>
               <th>${t('Transaction.columns.date') || 'Date'}</th>
               <th>${t('Clients.columns.client') || 'Client'}</th>
-              ${isSuperAdmin ? `<th>${isRtl ? 'بواسطة' : 'By'}</th>` : ''}
+              ${isSuperAdmin ? `<th>${t('Common.by') || 'By'}</th>` : ''}
               <th>${t('Transaction.columns.description') || 'Description'}</th>
               <th style="text-align: ${isRtl ? 'left' : 'right'}">${t('Transaction.columns.amount') || 'Amount'}</th>
             </tr>
           </thead>
           <tbody>
-            ${(detailedExpenses || []).map(tx => `
+            ${(detailedExpenses || []).map((tx, index) => `
               <tr>
+                <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
                 <td>${new Date(tx.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                 <td>${tx.clients?.name || '-'}</td>
                 ${isSuperAdmin ? `<td>${tx.users?.full_name || '-'}</td>` : ''}
@@ -246,8 +254,8 @@ export async function GET(request: Request) {
             `).join('')}
             ${(detailedExpenses || []).length === 0 ? `
               <tr>
-                <td colspan="${isSuperAdmin ? 5 : 4}" style="text-align: center; padding: 30px; color: var(--ink-500);">
-                  ${isRtl ? 'لا يوجد مصروفات مسجلة حالياً' : 'No expenses recorded currently'}
+                <td colspan="${isSuperAdmin ? 6 : 5}" style="text-align: center; padding: 40px; color: var(--ink-500);">
+                  ${t('Transaction.noResults') || 'No expenses recorded currently'}
                 </td>
               </tr>
             ` : ''}
@@ -278,7 +286,7 @@ export async function GET(request: Request) {
       }
 
       const CHROMIUM_PACK_URL = 'https://github.com/Sparticuz/chromium/releases/download/v148.0.0/chromium-v148.0.0-pack.x64.tar';
-      
+
       let executablePath;
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -287,7 +295,7 @@ export async function GET(request: Request) {
         console.error('Failed to get executable path:', pathError);
         throw new Error('Chromium binary path error: ' + (pathError as Error).message);
       }
-      
+
       browser = await puppeteer.launch({
         args: [...chromium.args, '--font-render-hinting=none'],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -309,18 +317,18 @@ export async function GET(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' as any });
     await page.evaluateHandle('document.fonts.ready');
-    
-    const pdfBuffer = await page.pdf({ 
-      format: 'A4', 
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
       printBackground: true,
       margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
     });
-    
+
     await browser.close();
 
     const cleanName = user.full_name.trim().replace(/\s+/g, '_');
-    const filename = isRtl 
-      ? `تقرير_ملخص_${cleanName}.pdf` 
+    const filename = isRtl
+      ? `تقرير_ملخص_${cleanName}.pdf`
       : `summary_report_${cleanName}.pdf`;
 
     return new NextResponse(pdfBuffer as unknown as BodyInit, {

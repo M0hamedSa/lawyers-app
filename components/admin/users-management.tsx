@@ -41,6 +41,8 @@ export function UsersManagement({
   const locale = useLocale();
   const t = useTranslations("UserManagement");
   const tLogin = useTranslations("Login");
+  const tRoles = useTranslations("Roles");
+  const tCommon = useTranslations("Common");
   const supabase = useMemo(() => createClient(), []);
   const [users, setUsers] = useState<UserWithAccess[]>(initialUsers);
   const [selectedUser, setSelectedUser] = useState<UserWithAccess | null>(null);
@@ -216,8 +218,8 @@ export function UsersManagement({
                 key: "role",
                 header: t("role"),
                 cell: (u) => (
-                  <span className="inline-flex rounded-md bg-ink-100 px-2 py-1 text-xs font-semibold capitalize text-ink-700">
-                    {u.role}
+                  <span className="inline-flex rounded-md bg-ink-100 px-2 py-1 text-xs font-semibold text-ink-700">
+                    {tRoles(u.role)}
                   </span>
                 ),
               },
@@ -285,14 +287,14 @@ export function UsersManagement({
                         )}
                       >
                         {togglingId === `role-${r}` && <Loader2 className="size-3 animate-spin" />}
-                        {r.charAt(0).toUpperCase() + r.slice(1)}
+                        {tRoles(r)}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
               <div className="space-y-2 border-b border-ink-100 pb-4">
-                <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">Cash Advance (EGP)</label>
+                <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">{tCommon("cashAdvance")} ({locale === "ar" ? "ج.م." : "EGP"})</label>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -306,7 +308,7 @@ export function UsersManagement({
                     disabled={submitting} 
                     onClick={updateCashAdvance}
                   >
-                    {togglingId === 'cash-advance' ? <Loader2 className="size-4 animate-spin" /> : 'Save'}
+                    {togglingId === 'cash-advance' ? <Loader2 className="size-4 animate-spin" /> : tCommon("save")}
                   </ActionButton>
                 </div>
               </div>
@@ -405,7 +407,7 @@ export function UsersManagement({
                     : "border-ink-200 text-ink-700 hover:bg-ink-50"
                 )}
               >
-                {r.charAt(0).toUpperCase() + r.slice(1)}
+                {tRoles(r)}
               </button>
             ))}
           </div>

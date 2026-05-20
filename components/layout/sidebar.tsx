@@ -11,6 +11,7 @@ type NavItem = {
   translationKey: string;
   icon: ComponentType<{ className?: string }>;
   adminOnly?: boolean;
+  superadminOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -18,6 +19,7 @@ const navItems: NavItem[] = [
   { href: "/clients", translationKey: "Clients.title", icon: BriefcaseBusiness },
   { href: "/admin/transactions", translationKey: "Admin.allTransactions", icon: History, adminOnly: true },
   { href: "/admin/users", translationKey: "Admin.manageUsers", icon: Users, adminOnly: true },
+  { href: "/admin/cash-advance", translationKey: "Admin.cashAdvances", icon: BriefcaseBusiness, adminOnly: true, superadminOnly: true },
 ];
 
 export function Sidebar({
@@ -38,6 +40,7 @@ export function Sidebar({
     if (key === "Clients.title") return tClients("title");
     if (key === "Admin.allTransactions") return tAdmin("allTransactions");
     if (key === "Admin.manageUsers") return tAdmin("manageUsers");
+    if (key === "Admin.cashAdvances") return tAdmin("cashAdvances");
     return key;
   }
 
@@ -67,7 +70,11 @@ export function Sidebar({
       {/* Nav links */}
       <nav className="flex-1 flex items-center justify-around w-full lg:flex-col lg:justify-start lg:gap-1 lg:overflow-y-auto lg:px-4 lg:py-5">
         {navItems
-          .filter((item) => !item.adminOnly || userRole === "admin" || userRole === "superadmin")
+          .filter((item) => {
+            if (item.superadminOnly && userRole !== "superadmin") return false;
+            if (item.adminOnly && userRole !== "admin" && userRole !== "superadmin") return false;
+            return true;
+          })
           .map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

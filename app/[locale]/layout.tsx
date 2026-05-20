@@ -5,15 +5,55 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
+import { getTranslations } from 'next-intl/server';
 import "../globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 const cairo = Cairo({ subsets: ["arabic"] });
 
-export const metadata: Metadata = {
-  title: "Law Ledger",
-  description: "Client-ledger management for small law firms",
-};
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  
+  // Use getTranslations for server-side metadata translation
+  const t = await getTranslations({ locale, namespace: "SEO" });
+
+  const title = t("title");
+  const description = t("description");
+
+  return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+    title: {
+      template: `%s | ${title}`,
+      default: title,
+    },
+    description: description,
+    keywords: t("keywords").split(", "),
+    authors: [{ name: "Mohamed Faried" }],
+    creator: "True Legal",
+    openGraph: {
+      title: t("ogTitle"),
+      description: t("ogDescription"),
+      url: "/",
+      siteName: t("siteName"),
+      locale: locale,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("ogTitle"),
+      description: t("ogDescription"),
+      creator: "@TrueLegal",
+    },
+    icons: {
+      icon: "/icon.png",
+      apple: "/icon.png",
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

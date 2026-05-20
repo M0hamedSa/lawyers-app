@@ -5,6 +5,7 @@ import { Search, ChevronDown, Check, Briefcase } from "lucide-react";
 import { useRouter, usePathname } from "@/i18n/routing";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { encodeId, decodeId } from "@/lib/id-utils";
 
 type SimpleClient = {
   id: string;
@@ -29,7 +30,7 @@ export function ClientSelector({ clients = [] }: { clients?: SimpleClient[] }) {
   // Extract active client ID from path if on client page
   const activeClientId = useMemo(() => {
     const match = pathname.match(/^\/clients\/([^/]+)/);
-    return match ? match[1] : null;
+    return match ? decodeId(match[1]) : null;
   }, [pathname]);
 
   // Retrieve active client name
@@ -90,7 +91,7 @@ export function ClientSelector({ clients = [] }: { clients?: SimpleClient[] }) {
   const handleSelect = (clientId: string) => {
     setIsOpen(false);
     setSearchTerm("");
-    router.push(`/clients/${clientId}`);
+    router.push(`/clients/${encodeId(clientId)}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

@@ -23,6 +23,7 @@ export function BalanceChart({
 }) {
   const locale = useLocale();
   const t = useTranslations("Charts");
+  const tDashboard = useTranslations("Dashboard");
   const isRtl = locale.startsWith("ar");
   const [compact, setCompact] = useState(true);
 
@@ -39,7 +40,7 @@ export function BalanceChart({
   if (data.length === 0) {
     return (
       <div className="flex h-56 items-center justify-center rounded-md border border-dashed border-ink-100 text-sm text-ink-700 dark:border-ink-600 dark:text-ink-400 sm:h-72">
-        No transactions yet.
+        {tDashboard("noTransactions")}
       </div>
     );
   }

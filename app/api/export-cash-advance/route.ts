@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/supabase/queries';
+import { getCurrentUser, getAllUsers } from '@/lib/supabase/queries';
 import { createClient } from '@/lib/supabase/server';
 import fs from 'fs';
 import path from 'path';
@@ -9,15 +9,11 @@ export const maxDuration = 60; // Allow up to 60 seconds for PDF generation
 export async function GET(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
+    if (!user || user.role !== 'superadmin') {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('query') || '';
-    const date = searchParams.get('date') || '';
-    const type = searchParams.get('type') || '';
-    const clientId = searchParams.get('client_id') || '';
     const locale = searchParams.get('locale') || 'en';
 
     // Load translations
@@ -37,87 +33,45 @@ export async function GET(request: Request) {
     };
 
     const supabase = await createClient();
-    let dbQuery = supabase
+    const users = await getAllUsers();
+
+    // Fetch all expenses to calculate totals
+    const { data: transactions } = await supabase
       .from("transactions")
-      .select("*, clients(name, profit), users!transactions_created_by_fkey(full_name)")
-      .order("date", { ascending: false });
+      .select("amount, created_by")
+      .eq("type", "expense");
 
-    if (user.role !== "superadmin") {
-      dbQuery = dbQuery.eq('created_by', user.id);
-    }
-
-    if (clientId) {
-      dbQuery = dbQuery.eq('client_id', clientId);
-      if (user.role !== 'superadmin') {
-        dbQuery = dbQuery.neq('type', 'payment');
+    const userExpenses = (transactions || []).reduce((acc, t_row) => {
+      if (t_row.created_by) {
+        acc[t_row.created_by] = (acc[t_row.created_by] || 0) + Number(t_row.amount);
       }
-    }
-    if (date) dbQuery = dbQuery.eq('date', date);
-    if (type === 'payment' || type === 'expense') {
-      dbQuery = dbQuery.eq('type', type);
-    }
+      return acc;
+    }, {} as Record<string, number>);
 
-    const { data: transactions, error: dbError } = await dbQuery;
+    let totalAdvances = 0;
+    let totalExpensesSum = 0;
+    let totalBalanceSum = 0;
 
-    if (dbError) throw new Error(dbError.message);
+    const usersData = users
+      .filter(u => u.role !== 'superadmin')
+      .map(u => {
+        const expenses = userExpenses[u.id] || 0;
+        const advance = u.cash_advance || 0;
+        const balance = advance - expenses;
 
-    // Apply text search filter if present (Supabase text search is more complex, so we'll keep this part in JS for simplicity or use .ilike)
-    let filteredTransactions = transactions || [];
-    if (query) {
-      const q = query.toLowerCase();
-      filteredTransactions = filteredTransactions.filter(t =>
-        t.clients.name.toLowerCase().includes(q) ||
-        (t.users?.full_name || "").toLowerCase().includes(q) ||
-        (t.description || "").toLowerCase().includes(q)
-      );
-    }
+        totalAdvances += advance;
+        totalExpensesSum += expenses;
+        totalBalanceSum += balance;
 
-    const transactionsToReport = filteredTransactions;
-
-    let totalIncome = 0;
-    let rawTotalIncome = 0;
-    let totalExpense = 0;
-    let totalProfit = 0;
-    const uniqueClientIds = new Set();
-
-    transactionsToReport.forEach(t => {
-      if (t.type === 'payment') {
-        totalIncome += Number(t.amount);
-        rawTotalIncome += Number(t.amount);
-      }
-      if (t.type === 'expense') totalExpense += Number(t.amount);
-
-      if (user.role === 'superadmin' && t.client_id) {
-        if (!uniqueClientIds.has(t.client_id)) {
-          uniqueClientIds.add(t.client_id);
-          const clientProfit = t.clients?.profit || 0;
-          totalProfit += Number(clientProfit);
-        }
-      }
-    });
-
-    if (user.role === 'superadmin') {
-      totalIncome = Math.max(0, totalIncome - totalProfit);
-    } else {
-      totalIncome = user.cash_advance || 0;
-    }
-
-    const isClientReport = !!clientId;
-    const isSuperAdmin = user.role === 'superadmin';
-    const showProfitCard = isClientReport && isSuperAdmin;
-
-    const firstCardLabel = showProfitCard
-      ? (t('Clients.form.profit') || 'Profit')
-      : (isSuperAdmin ? t('Dashboard.totalPayments') : (t('Common.cashAdvance') || 'Cash Advance'));
-
-    const firstCardValue = showProfitCard
-      ? totalProfit
-      : totalIncome;
+        return {
+          ...u,
+          total_expenses: expenses,
+          balance: balance
+        };
+      });
 
     const isRtl = locale === 'ar';
-    const reportTitle = clientId && transactionsToReport.length > 0
-      ? `${transactionsToReport[0].clients.name} - ${t('Admin.exportReport')}`
-      : t('Admin.exportReport');
+    const reportTitle = t('CashAdvance.reportTitle') || 'Cash Advance Report';
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -247,7 +201,7 @@ export async function GET(request: Request) {
         <div class="header">
           <div class="title-area">
             <h1>${reportTitle}</h1>
-            <div class="meta">${t('Dashboard.title')} · ${new Date().toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short' })}</div>
+            <div class="meta">${t('CashAdvance.title')} · ${new Date().toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short' })}</div>
           </div>
           <div style="text-align: ${isRtl ? 'left' : 'right'}">
             <div style="font-weight: 700; color: var(--primary); font-size: 18px;">${t('Sidebar.appName')}</div>
@@ -256,23 +210,17 @@ export async function GET(request: Request) {
         </div>
         
         <div class="summary-strip">
-          ${showProfitCard ? `
           <div class="summary-item">
-            <div class="summary-label">${t('Dashboard.totalPayments') || 'Total Payments'}</div>
-            <div class="summary-value income">+${rawTotalIncome.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
-          </div>
-          ` : ''}
-          <div class="summary-item">
-            <div class="summary-label">${firstCardLabel}</div>
-            <div class="summary-value income">+${firstCardValue.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${t('CashAdvance.totalAdvances')}</div>
+            <div class="summary-value income">${totalAdvances.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">${isSuperAdmin ? t('Dashboard.totalExpenses') : (t('Common.myExpenses') || 'My Expenses')}</div>
-            <div class="summary-value expense">-${totalExpense.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${t('CashAdvance.totalUserExpenses')}</div>
+            <div class="summary-value expense">${totalExpensesSum.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">${t('Dashboard.totalBalance')}</div>
-            <div class="summary-value ${(totalIncome - totalExpense) >= 0 ? 'balance-positive' : 'balance-negative'}">${(totalIncome - totalExpense).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${t('CashAdvance.netBalance')}</div>
+            <div class="summary-value ${totalBalanceSum >= 0 ? 'balance-positive' : 'balance-negative'}">${totalBalanceSum.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
         </div>
 
@@ -280,27 +228,31 @@ export async function GET(request: Request) {
           <thead>
             <tr>
               <th style="width: 40px; text-align: center;">#</th>
-              <th>${t('Transaction.columns.date')}</th>
-              <th>${t('Clients.columns.client')}</th>
-              <th>${t('Transaction.columns.type')}</th>
-              <th>${t('Transaction.columns.description')}</th>
-              <th class="amount-cell">${t('Transaction.columns.amount')}</th>
+              <th>${t('CashAdvance.userName')}</th>
+              <th>${t('CashAdvance.role')}</th>
+              <th class="amount-cell">${t('CashAdvance.currentAdvance')}</th>
+              <th class="amount-cell">${t('CashAdvance.totalExpenses')}</th>
+              <th class="amount-cell">${t('CashAdvance.currentBalance')}</th>
             </tr>
           </thead>
           <tbody>
-            ${transactionsToReport.map((t_row, index) => `
+            ${usersData.map((u_row, index) => `
               <tr>
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
-                <td>${new Date(t_row.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                <td>${t_row.clients?.name || ''}</td>
-                <td>${t(t_row.type === 'payment' ? 'Common.payment' : 'Common.expense')}</td>
-                <td>${t_row.description}</td>
-                <td class="amount-cell ${t_row.type === 'payment' ? 'payment' : 'expense'}">
-                  ${t_row.type === 'payment' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
+                <td>${u_row.full_name || ''}</td>
+                <td>${t('Roles.' + u_row.role)}</td>
+                <td class="amount-cell">
+                  ${Number(u_row.cash_advance || 0).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
+                </td>
+                <td class="amount-cell expense">
+                  ${Number(u_row.total_expenses).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
+                </td>
+                <td class="amount-cell ${u_row.balance < 0 ? 'expense' : 'payment'}">
+                  ${Number(u_row.balance).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
                 </td>
               </tr>
             `).join('')}
-            ${transactionsToReport.length === 0 ? `<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults')}</td></tr>` : ''}
+            ${usersData.length === 0 ? `<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('CashAdvance.noUsers')}</td></tr>` : ''}
           </tbody>
         </table>
 
@@ -328,8 +280,6 @@ export async function GET(request: Request) {
         console.error('Failed to register font:', fontError);
       }
 
-      // When using @sparticuz/chromium-min, we must provide a remote URL to the chromium binary pack
-      // We use x64 as it's the standard for Vercel serverless functions
       const CHROMIUM_PACK_URL = 'https://github.com/Sparticuz/chromium/releases/download/v148.0.0/chromium-v148.0.0-pack.x64.tar';
 
       let executablePath;
@@ -373,9 +323,7 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const generatedFilename = clientId && transactionsToReport.length > 0
-      ? (locale === 'ar' ? `تقرير_عميل_${transactionsToReport[0].clients.name}.pdf` : `client_${transactionsToReport[0].clients.name}_report.pdf`)
-      : (locale === 'ar' ? "تقرير_المعاملات.pdf" : "transactions_report.pdf");
+    const generatedFilename = locale === 'ar' ? "تقرير_العهد_المالية.pdf" : "cash_advance_report.pdf";
 
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,

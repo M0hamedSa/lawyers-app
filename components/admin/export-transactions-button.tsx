@@ -39,10 +39,15 @@ export function ExportTransactionsButton({ clientId }: { clientId?: string }) {
       const a = document.createElement("a");
       a.href = downloadUrl;
       
-      // Determine filename based on locale
-      const filename = clientId 
-        ? (locale === 'ar' ? `تقرير_عميل_${clientId}.pdf` : `client_${clientId}_report.pdf`)
-        : (locale === 'ar' ? "تقرير_المعاملات.pdf" : "transactions_report.pdf");
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = locale === 'ar' ? "تقرير_المعاملات.pdf" : "transactions_report.pdf";
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch && filenameMatch.length === 2) {
+          filename = decodeURIComponent(filenameMatch[1]);
+        }
+      }
       
       a.download = filename;
       document.body.appendChild(a);

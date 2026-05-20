@@ -37,6 +37,7 @@ export function ClientsPageClient({
   const locale = useLocale();
   const t = useTranslations("Clients");
   const tCommon = useTranslations("Common");
+  const tDashboard = useTranslations("Dashboard");
   const [clients, setClients] = useState(initialClients);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<ClientForm>(emptyForm);
@@ -218,6 +219,15 @@ export function ClientsPageClient({
               ...(userRole === "superadmin"
                 ? [
                     {
+                      key: "total_payments",
+                      header: tDashboard("totalPayments"),
+                      cell: (client: ClientWithSummary) => (
+                        <span className="font-medium tabular-nums text-green-700 dark:text-green-400">
+                          {formatCurrency(client.total_payments, locale)}
+                        </span>
+                      ),
+                    },
+                    {
                       key: "payments",
                       header: t("columns.payments"),
                       cell: (client: ClientWithSummary) => {
@@ -265,7 +275,7 @@ export function ClientsPageClient({
                 : [
                     {
                       key: "expenses",
-                      header: "My Expenses",
+                      header: tCommon("myExpenses"),
                       cell: (client: ClientWithSummary) => (
                         <span className="font-medium tabular-nums text-red-700 dark:text-red-400">
                           {formatCurrency(client.total_expenses, locale)}

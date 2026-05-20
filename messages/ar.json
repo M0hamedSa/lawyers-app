@@ -11,10 +11,16 @@
     "date": "التاريخ",
     "description": "الوصف",
     "payment": "دفعة",
-    "expense": "مصروف"
+    "expense": "مصروف",
+    "myFinancials": "حساباتي المالية",
+    "cashAdvance": "العهدة المالية",
+    "myExpenses": "مصروفاتي",
+    "balance": "الرصيد",
+    "by": "بواسطة",
+    "detailedExpenses": "تفاصيل المصروفات"
   },
   "Login": {
-    "title": "تسجيل الدخول إلى دفتر المحاماة",
+    "title": "تسجيل الدخول إلى True Legal Law Firm",
     "subtitle": "مرحباً بك مجدداً، يرجى إدخال بيانات الاعتماد",
     "email": "البريد الإلكتروني",
     "password": "كلمة المرور",
@@ -40,8 +46,8 @@
     "placeholder": "ابحث عن عميل بالاسم..."
   },
   "Sidebar": {
-    "appName": "دفتر المحاماة",
-    "subtitle": "مكتب المالية للعملاء",
+    "appName": "True Legal Law Firm",
+    "subtitle": "محمد فريد",
     "logout": "تسجيل الخروج",
     "signedInAs": "مسجّل الدخول كـ",
     "unnamedUser": "عضو الفريق",
@@ -55,7 +61,8 @@
     "totalClients": "إجمالي العملاء",
     "totalBalance": "الرصيد الإجمالي",
     "totalPayments": "إجمالي الدفعات",
-    "totalExpenses": "إجمالي المصروفات"
+    "totalExpenses": "إجمالي المصروفات",
+    "noTransactions": "لا توجد معاملات بعد."
   },
   "Clients": {
     "title": "العملاء",
@@ -121,6 +128,7 @@
   },
   "Charts": {
     "incomeExpense": "الدخل مقابل المصاريف",
+    "paymentsVsExpenses": "المدفوعات مقابل المصروفات بمرور الوقت",
     "distribution": "توزيع المعاملات",
     "balanceHistory": "سجل الرصيد",
     "volumeDistribution": "توزيع الحجم",
@@ -136,7 +144,28 @@
     "transactionsLog": "سجل جميع المعاملات",
     "allTransactions": "سجل جميع المعاملات",
     "manageUsers": "إدارة المستخدمين",
-    "exportReport": "تصدير التقرير"
+    "cashAdvances": "العهد المالية",
+    "exportReport": "تصدير التقرير",
+    "firmReportTitle": "تقرير ملخص لوحة التحكم للشركة",
+    "myReportTitle": "تقرير ملخص لوحة التحكم الخاصة بي"
+  },
+  "CashAdvance": {
+    "title": "إدارة العهد المالية",
+    "subtitle": "إدارة ومتابعة العهد المالية لجميع أعضاء الفريق",
+    "totalAdvances": "إجمالي العهد المالية",
+    "totalUserExpenses": "إجمالي مصروفات المستخدمين",
+    "netBalance": "صافي الرصيد",
+    "teamMembers": "أعضاء الفريق",
+    "userName": "اسم المستخدم",
+    "role": "الصلاحية",
+    "currentAdvance": "العهدة المالية",
+    "totalExpenses": "إجمالي المصروفات",
+    "currentBalance": "الرصيد الحالي",
+    "editAdvance": "تعديل العهدة",
+    "updateAdvance": "تحديث العهدة المالية",
+    "newAmount": "المبلغ الجديد",
+    "noUsers": "لم يتم العثور على مستخدمين.",
+    "reportTitle": "تقرير العهد المالية"
   },
   "UserManagement": {
     "invite": "دعوة مستخدم جديد",
@@ -157,5 +186,18 @@
     "userRole": "صلاحية المستخدم",
     "noUsers": "لم يتم العثور على مستخدمين.",
     "lockoutWarning": "لا يمكن للمسؤولين الفائقين تغيير صلاحياتهم الخاصة لتجنب قفل الحساب بالخطأ."
+  },
+  "Roles": {
+    "superadmin": "مدير عام",
+    "admin": "مدير",
+    "user": "عضو فريق"
+  },
+  "SEO": {
+    "title": "ترو ليجال للمحاماة",
+    "description": "محمد فريد - إدارة الحسابات المالية للعملاء",
+    "keywords": "مكتب محاماة, إدارة مالية, حسابات العملاء, فواتير قانونية",
+    "ogTitle": "ترو ليجال للمحاماة",
+    "ogDescription": "إدارة الشؤون المالية للعملاء، المعاملات، والأرصدة بشكل آمن مع بوابة ترو ليجال للمحاماة.",
+    "siteName": "ترو ليجال"
   }
 }

@@ -17,9 +17,16 @@ import {
   IncomeExpenseBarChart, 
   TransactionDistributionChart 
 } from "@/components/charts/transaction-charts";
+import { FinanceMetric } from "@/components/ui/finance-metric";
 
 export const dynamic = "force-dynamic";
 
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const tAdmin = await getTranslations("Admin");
+  return { title: tAdmin("allTransactions") };
+}
 export default async function AdminTransactionsPage({
   searchParams,
 }: {
@@ -81,6 +88,35 @@ export default async function AdminTransactionsPage({
       </div>
 
       <TransactionSearch />
+
+      {transactions.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <FinanceMetric 
+            label={tCharts("payments") || "Total Payments"} 
+            value={formatCurrency(transactions.reduce((acc, t) => acc + (t.type === 'payment' ? Number(t.amount) : 0), 0), locale)} 
+            tone="payment" 
+          />
+          <FinanceMetric 
+            label={tCharts("expenses") || "Total Expenses"} 
+            value={formatCurrency(transactions.reduce((acc, t) => acc + (t.type === 'expense' ? Number(t.amount) : 0), 0), locale)} 
+            tone="expense" 
+          />
+          <FinanceMetric 
+            label={tCharts("balance") || "Balance"} 
+            value={formatCurrency(
+              transactions.reduce((acc, t) => acc + (t.type === 'payment' ? Number(t.amount) : 0), 0) - 
+              transactions.reduce((acc, t) => acc + (t.type === 'expense' ? Number(t.amount) : 0), 0), 
+              locale
+            )} 
+            tone="balance"
+            rawValue={
+              transactions.reduce((acc, t) => acc + (t.type === 'payment' ? Number(t.amount) : 0), 0) - 
+              transactions.reduce((acc, t) => acc + (t.type === 'expense' ? Number(t.amount) : 0), 0)
+            }
+          />
+
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">

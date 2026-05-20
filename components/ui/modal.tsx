@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,10 +14,16 @@ type ModalProps = {
 };
 
 export function Modal({ title, open, onClose, children, className }: ModalProps) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/45 p-0 pt-8 sm:items-center sm:p-4 dark:bg-black/70">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-ink-900/45 p-0 pt-8 sm:items-center sm:p-4 dark:bg-black/70">
       <div
         className={cn(
           "max-h-[min(92dvh,100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-t-lg bg-white shadow-soft sm:rounded-md dark:border dark:border-ink-600 dark:bg-ink-900 dark:shadow-none",
@@ -35,6 +43,7 @@ export function Modal({ title, open, onClose, children, className }: ModalProps)
         </div>
         <div className="p-4 sm:p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -11,10 +11,16 @@
     "date": "Date",
     "description": "Description",
     "payment": "Payment",
-    "expense": "Expense"
+    "expense": "Expense",
+    "myFinancials": "My Financials",
+    "cashAdvance": "Cash Advance",
+    "myExpenses": "My Expenses",
+    "balance": "Balance",
+    "by": "By",
+    "detailedExpenses": "Detailed Expense Transactions"
   },
   "Login": {
-    "title": "Sign in to Law Ledger",
+    "title": "Sign in to True Legal Law Firm",
     "subtitle": "Welcome back, please enter your credentials",
     "email": "Email address",
     "password": "Password",
@@ -40,8 +46,8 @@
     "placeholder": "Search client by name..."
   },
   "Sidebar": {
-    "appName": "Law Ledger",
-    "subtitle": "Client finance office",
+    "appName": "True Legal Law Firm",
+    "subtitle": "Mohamed Faried",
     "logout": "Log out",
     "signedInAs": "Signed in as",
     "unnamedUser": "Team member",
@@ -55,7 +61,8 @@
     "totalClients": "Total Clients",
     "totalBalance": "Total Balance",
     "totalPayments": "Total Payments",
-    "totalExpenses": "Total Expenses"
+    "totalExpenses": "Total Expenses",
+    "noTransactions": "No transactions yet."
   },
   "Clients": {
     "title": "Clients",
@@ -121,14 +128,15 @@
   },
   "Charts": {
     "incomeExpense": "Income vs Expense",
+    "paymentsVsExpenses": "Payments vs Expenses over time",
     "distribution": "Transaction Distribution",
-    "balanceHistory": "Account Balance History",
+    "balanceHistory": "Balance History",
     "volumeDistribution": "Volume Distribution",
     "systemIncomeExpense": "System Income vs Expense",
-    "income": "Income",
-    "expense": "Expense",
     "payments": "Payments",
     "expenses": "Expenses",
+    "income": "Income",
+    "expense": "Expense",
     "balance": "Balance"
   },
   "Admin": {
@@ -136,7 +144,28 @@
     "transactionsLog": "All Transactions Log",
     "allTransactions": "All Transactions Log",
     "manageUsers": "Manage Users",
-    "exportReport": "Export Report"
+    "cashAdvances": "Cash Advances",
+    "exportReport": "Export Report",
+    "firmReportTitle": "Firm Dashboard Summary Report",
+    "myReportTitle": "My Dashboard Summary Report"
+  },
+  "CashAdvance": {
+    "title": "Cash Advance Management",
+    "subtitle": "Manage and track cash advances for all team members",
+    "totalAdvances": "Total Cash Advances",
+    "totalUserExpenses": "Total User Expenses",
+    "netBalance": "Net Balance",
+    "teamMembers": "Team Members",
+    "userName": "User Name",
+    "role": "Role",
+    "currentAdvance": "Cash Advance",
+    "totalExpenses": "Total Expenses",
+    "currentBalance": "Current Balance",
+    "editAdvance": "Edit Advance",
+    "updateAdvance": "Update Cash Advance",
+    "newAmount": "New Amount",
+    "noUsers": "No users found.",
+    "reportTitle": "Cash Advance Report"
   },
   "UserManagement": {
     "invite": "Invite New User",
@@ -157,5 +186,18 @@
     "userRole": "User Role",
     "noUsers": "No users found.",
     "lockoutWarning": "Superadmins cannot change their own role to prevent accidental lockout."
+  },
+  "Roles": {
+    "superadmin": "Super Admin",
+    "admin": "Admin",
+    "user": "User"
+  },
+  "SEO": {
+    "title": "True Legal Law Firm",
+    "description": "Mohamed Faried - Client finance office management",
+    "keywords": "law firm, finance management, client accounts, legal billing",
+    "ogTitle": "True Legal Law Firm",
+    "ogDescription": "Manage client financials, transactions, and balances securely with True Legal Law Firm portal.",
+    "siteName": "True Legal"
   }
 }

@@ -25,6 +25,8 @@ export function Navbar({
   const locale = useLocale();
   const isRtl = locale === "ar";
   const tSidebar = useTranslations("Sidebar");
+  const tRoles = useTranslations("Roles");
+  const tCommon = useTranslations("Common");
 
   const [dark, setDark] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -100,7 +102,7 @@ export function Navbar({
                   </p>
                   <p className="mt-0.5 truncate text-sm font-semibold text-ink-900 dark:text-ink-50">{displayName}</p>
                   {userRole && (
-                    <p className="text-xs capitalize text-ink-500 dark:text-ink-400">{userRole}</p>
+                    <p className="text-xs text-ink-500 dark:text-ink-400">{tRoles(userRole)}</p>
                   )}
                 </div>
 
@@ -110,24 +112,24 @@ export function Navbar({
                     <div className="mb-2 flex items-center gap-1.5">
                       <Wallet className="size-3.5 text-brass-600 dark:text-brass-400" />
                       <p className="text-[10px] font-bold uppercase tracking-widest text-brass-700 dark:text-brass-400">
-                        My Financials
+                        {tCommon("myFinancials")}
                       </p>
                     </div>
                     <div className="space-y-1 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-ink-600 dark:text-ink-400">Cash Advance</span>
+                        <span className="text-ink-600 dark:text-ink-400">{tCommon("cashAdvance")}</span>
                         <span className="font-semibold text-ink-900 dark:text-ink-50">
                           {formatCurrency(financials.cashAdvance, locale)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-ink-600 dark:text-ink-400">My Expenses</span>
+                        <span className="text-ink-600 dark:text-ink-400">{tCommon("myExpenses")}</span>
                         <span className="font-semibold text-red-600 dark:text-red-400">
                           {formatCurrency(financials.totalExpenses, locale)}
                         </span>
                       </div>
                       <div className="flex justify-between border-t border-ink-200/70 pt-1 dark:border-ink-700">
-                        <span className="font-medium text-ink-600 dark:text-ink-400">Balance</span>
+                        <span className="font-medium text-ink-600 dark:text-ink-400">{tCommon("balance")}</span>
                         <span className="font-bold text-ink-900 dark:text-ink-50">
                           {formatCurrency(financials.balance, locale)}
                         </span>

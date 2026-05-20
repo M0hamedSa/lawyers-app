@@ -167,13 +167,21 @@ export function IncomeExpenseBarChart({
 // --- Cumulative Balance Area Chart ---
 export function BalanceHistoryChart({ transactions }: { transactions: LedgerTransaction[] }) {
   const locale = useLocale();
+  const t = useTranslations("Charts");
   const isRtl = locale === "ar";
   
   const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-  let balance = 0;
-  const data = sorted.map(t => {
-    balance += t.type === "payment" ? Number(t.amount) : -Number(t.amount);
-    return { date: t.date, balance };
+  let cumPayments = 0;
+  let cumExpenses = 0;
+  const data = sorted.map(tx => {
+    if (tx.type === "payment") cumPayments += Number(tx.amount);
+    else cumExpenses += Number(tx.amount);
+    return {
+      date: tx.date,
+      payments: cumPayments,
+      expenses: cumExpenses,
+      balance: cumPayments - cumExpenses,
+    };
   });
 
   return (
@@ -186,6 +194,14 @@ export function BalanceHistoryChart({ transactions }: { transactions: LedgerTran
           bottom: 0 
         }}>
           <defs>
+            <linearGradient id="colorPayments" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={COLORS.payment} stopOpacity={0.15} />
+              <stop offset="95%" stopColor={COLORS.payment} stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={COLORS.expense} stopOpacity={0.15} />
+              <stop offset="95%" stopColor={COLORS.expense} stopOpacity={0} />
+            </linearGradient>
             <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={COLORS.balance} stopOpacity={0.2} />
               <stop offset="95%" stopColor={COLORS.balance} stopOpacity={0} />
@@ -211,7 +227,7 @@ export function BalanceHistoryChart({ transactions }: { transactions: LedgerTran
             orientation={isRtl ? "right" : "left"}
           />
           <Tooltip 
-            formatter={(value: number) => formatCurrency(value, locale)}
+            formatter={(value: number, name: string) => [formatCurrency(value, locale), name]}
             contentStyle={{ 
               borderRadius: '8px', 
               border: 'none', 
@@ -221,13 +237,39 @@ export function BalanceHistoryChart({ transactions }: { transactions: LedgerTran
               color: 'var(--tooltip-text, #111)'
             }}
           />
+          <Legend 
+            iconType="circle" 
+            formatter={(value) => (
+              <span className={`text-sm ${isRtl ? 'mr-1.5' : 'ml-1.5'}`}>{value}</span>
+            )}
+          />
+          <Area 
+            type="monotone" 
+            dataKey="payments" 
+            stroke={COLORS.payment} 
+            fillOpacity={1} 
+            fill="url(#colorPayments)" 
+            strokeWidth={2}
+            name={t("payments")}
+          />
+          <Area 
+            type="monotone" 
+            dataKey="expenses" 
+            stroke={COLORS.expense} 
+            fillOpacity={1} 
+            fill="url(#colorExpenses)" 
+            strokeWidth={2}
+            name={t("expenses")}
+          />
           <Area 
             type="monotone" 
             dataKey="balance" 
             stroke={COLORS.balance} 
             fillOpacity={1} 
             fill="url(#colorBalance)" 
-            strokeWidth={2}
+            strokeWidth={2.5}
+            strokeDasharray="5 3"
+            name={t("balance")}
           />
         </AreaChart>
       </ResponsiveContainer>

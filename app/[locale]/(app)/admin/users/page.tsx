@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getAllUsers, getAdminClients, getCurrentUser } from "@/lib/supabase/queries";
 import { UsersManagement } from "@/components/admin/users-management";
 import { getTranslations } from "next-intl/server";
@@ -5,6 +6,11 @@ import { redirect } from "@/i18n/routing";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const tAdmin = await getTranslations({ locale, namespace: "Admin" });
+  return { title: tAdmin("manageUsers") };
+}
 export default async function AdminUsersPage({ 
   params 
 }: { 
@@ -23,6 +29,8 @@ export default async function AdminUsersPage({
     getAdminClients()
   ]);
   
+  const nonSuperAdminUsers = users.filter(u => u.role !== "superadmin");
+  
   const tAdmin = await getTranslations("Admin");
 
   return (
@@ -33,7 +41,7 @@ export default async function AdminUsersPage({
       </div>
 
       <UsersManagement 
-        initialUsers={users} 
+        initialUsers={nonSuperAdminUsers} 
         allClients={clients} 
         currentRole={role || null} 
         currentUserId={currentUser?.id || ""} 
