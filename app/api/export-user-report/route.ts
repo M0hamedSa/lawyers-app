@@ -58,9 +58,7 @@ export async function GET(request: Request) {
       ? (t('Admin.firmReportTitle') || 'Firm Dashboard Summary Report')
       : (t('Admin.myReportTitle') || 'My Dashboard Summary Report');
 
-    const labelPayments = isSuperAdmin
-      ? (t('Dashboard.totalPayments') || 'Total Payments')
-      : (t('Common.cashAdvance') || 'Cash Advance');
+    const labelPayments = t('Dashboard.totalPayments') || 'Total Payments';
 
     const labelExpenses = isSuperAdmin
       ? (t('Dashboard.totalExpenses') || 'Total Expenses')
@@ -210,10 +208,12 @@ export async function GET(request: Request) {
             <div class="summary-label">${labelClients}</div>
             <div class="summary-value">${data.totalClients}</div>
           </div>
+          ${isSuperAdmin ? `
           <div class="summary-item">
             <div class="summary-label">${labelPayments}</div>
             <div class="summary-value income">+${data.totalPayments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          ` : ''}
           <div class="summary-item">
             <div class="summary-label">${labelExpenses}</div>
             <div class="summary-value expense">-${data.totalExpenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>

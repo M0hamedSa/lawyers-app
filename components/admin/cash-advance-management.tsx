@@ -97,7 +97,7 @@ export function CashAdvanceManagement({
         <Card>
           <CardContent className="p-4 sm:p-6">
             <p className="text-sm font-normal text-ink-700 dark:text-ink-300">{t("netBalance")}</p>
-            <h2 className={`mt-2 text-xl font-normal tabular-nums sm:text-2xl ${totalBalance < 0 ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>
+            <h2 className="mt-2 text-xl font-normal tabular-nums text-ink-900 dark:text-ink-50 sm:text-2xl">
               {totalBalance.toLocaleString()} {locale === "ar" ? "ج.م." : "EGP"}
             </h2>
           </CardContent>
@@ -162,7 +162,7 @@ export function CashAdvanceManagement({
                 key: "balance",
                 header: t("currentBalance"),
                 cell: (u) => (
-                  <span className={`font-bold ${u.balance < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  <span className="font-semibold tabular-nums text-ink-900 dark:text-ink-50">
                     {u.balance.toLocaleString()}
                   </span>
                 ),

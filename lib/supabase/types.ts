@@ -1,13 +1,29 @@
 export type UserRole = "superadmin" | "admin" | "user";
 export type TransactionType = "payment" | "expense";
 export type VoucherType = "cash" | "bank_transfer" | "check" | "card" | "other";
+export type ProfitType = "monthly" | "per_case";
 
 export type Client = {
   id: string;
   name: string;
   phone: string | null;
   email: string | null;
+  profit_type: ProfitType;
   profit: number | null;
+  status: "active" | "inactive";
+  monthly_payment_day: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Case = {
+  id: string;
+  client_id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  profit_amount: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -16,6 +32,7 @@ export type Client = {
 export type LedgerTransaction = {
   id: string;
   client_id: string;
+  case_id: string | null;
   type: TransactionType;
   amount: number;
   description: string;
@@ -33,7 +50,21 @@ export type ClientFinancialSummary = {
   balance: number;
 };
 
+export type CaseFinancialSummary = {
+  case_id: string;
+  client_id: string;
+  total_payments: number;
+  total_expenses: number;
+  balance: number;
+};
+
 export type ClientWithSummary = Client & {
+  total_payments: number;
+  total_expenses: number;
+  balance: number;
+};
+
+export type CaseWithSummary = Case & {
   total_payments: number;
   total_expenses: number;
   balance: number;
@@ -70,14 +101,20 @@ export type Database = {
           name: string;
           phone?: string | null;
           email?: string | null;
+          profit_type?: ProfitType;
           profit?: number | null;
+          status?: "active" | "inactive";
+          monthly_payment_day?: number | null;
           created_by?: string | null;
         };
         Update: {
           name?: string;
           phone?: string | null;
           email?: string | null;
+          profit_type?: ProfitType;
           profit?: number | null;
+          status?: "active" | "inactive";
+          monthly_payment_day?: number | null;
         };
         Relationships: [
           {
@@ -89,10 +126,44 @@ export type Database = {
           },
         ];
       };
+      cases: {
+        Row: Case;
+        Insert: {
+          client_id: string;
+          title: string;
+          description?: string | null;
+          status?: string;
+          profit_amount?: number | null;
+          created_by?: string | null;
+        };
+        Update: {
+          title?: string;
+          description?: string | null;
+          status?: string;
+          profit_amount?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cases_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "cases_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       transactions: {
         Row: LedgerTransaction;
         Insert: {
           client_id: string;
+          case_id?: string | null;
           type: TransactionType;
           amount: number;
           description: string;
@@ -101,6 +172,7 @@ export type Database = {
           created_by?: string | null;
         };
         Update: {
+          case_id?: string | null;
           type?: TransactionType;
           amount?: number;
           description?: string;
@@ -113,6 +185,13 @@ export type Database = {
             columns: ["client_id"],
             isOneToOne: false,
             referencedRelation: "clients",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "transactions_case_id_fkey",
+            columns: ["case_id"],
+            isOneToOne: false,
+            referencedRelation: "cases",
             referencedColumns: ["id"],
           },
           {
@@ -169,12 +248,25 @@ export type Database = {
           },
         ];
       };
+      case_financial_summary: {
+        Row: CaseFinancialSummary;
+        Relationships: [
+          {
+            foreignKeyName: "case_financial_summary_case_id_fkey";
+            columns: ["case_id"];
+            isOneToOne: true;
+            referencedRelation: "cases";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: Record<string, never>;
     Enums: {
       user_role: UserRole;
       transaction_type: TransactionType;
       voucher_type: VoucherType;
+      profit_type: ProfitType;
     };
     CompositeTypes: Record<string, never>;
   };

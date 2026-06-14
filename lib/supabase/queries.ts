@@ -6,7 +6,23 @@ type ClientRow = {
   name: string;
   phone: string | null;
   email: string | null;
+  profit_type: "monthly" | "per_case";
   profit: number | null;
+  status: "active" | "inactive";
+  monthly_payment_day: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  transactions: { amount: number; type: "payment" | "expense"; created_by?: string }[];
+};
+
+export type CaseRow = {
+  id: string;
+  client_id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  profit_amount: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -34,10 +50,42 @@ function withSummary(client: ClientRow, currentUser: SummaryUser | null = null):
     name: client.name,
     phone: client.phone,
     email: client.email,
+    profit_type: client.profit_type,
     profit: client.profit,
+    status: client.status,
+    monthly_payment_day: client.monthly_payment_day,
     created_by: client.created_by,
     created_at: client.created_at,
     updated_at: client.updated_at,
+    total_payments: totals.total_payments,
+    total_expenses: totals.total_expenses,
+    balance: totals.total_payments - totals.total_expenses,
+  };
+}
+
+export function caseWithSummary(c: CaseRow, currentUser: SummaryUser | null = null) {
+  const totals = c.transactions.reduce(
+    (acc, transaction) => {
+      if (currentUser && currentUser.role !== "superadmin" && transaction.created_by !== currentUser.id) {
+        return acc;
+      }
+      if (transaction.type === "payment") acc.total_payments += Number(transaction.amount);
+      if (transaction.type === "expense") acc.total_expenses += Number(transaction.amount);
+      return acc;
+    },
+    { total_payments: 0, total_expenses: 0 },
+  );
+
+  return {
+    id: c.id,
+    client_id: c.client_id,
+    title: c.title,
+    description: c.description,
+    status: c.status,
+    profit_amount: c.profit_amount,
+    created_by: c.created_by,
+    created_at: c.created_at,
+    updated_at: c.updated_at,
     total_payments: totals.total_payments,
     total_expenses: totals.total_expenses,
     balance: totals.total_payments - totals.total_expenses,
@@ -73,43 +121,58 @@ export async function getClientTransactions(clientId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("transactions")
-    .select("*")
+    .select("*, cases(title)")
     .eq("client_id", clientId)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as LedgerTransaction[];
+  return (data ?? []) as (LedgerTransaction & { cases: { title: string } | null })[];
+}
+
+export async function getCases(clientId: string) {
+  const currentUser = await getCurrentUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("cases")
+    .select("*, transactions(amount, type, created_by)")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((c) => caseWithSummary(c as CaseRow, currentUser));
+}
+
+export async function getCase(caseId: string) {
+  const currentUser = await getCurrentUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("cases")
+    .select("*, transactions(amount, type, created_by)")
+    .eq("id", caseId)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return caseWithSummary(data as CaseRow, currentUser);
+}
+
+export async function getCaseTransactions(caseId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*, users!transactions_created_by_fkey(full_name)")
+    .eq("case_id", caseId)
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as (LedgerTransaction & { users: { full_name: string } | null })[];
 }
 
 export async function getDashboardData() {
   const currentUser = await getCurrentUser();
-  const supabase = await createClient();
 
-  let txQuery = supabase
-    .from("transactions")
-    .select("date, amount, type")
-    .order("date", { ascending: true });
-
-  if (currentUser && currentUser.role !== "superadmin") {
-    txQuery = txQuery.eq("created_by", currentUser.id);
-  }
-
-  const [clients, { data: transactionsData, error: transactionsError }] = await Promise.all([
-    getClients(),
-    txQuery
-  ]);
-
-  if (transactionsError) throw new Error(transactionsError.message);
-
-  const byMonth = new Map<string, { month: string; payments: number; expenses: number }>();
-  for (const transaction of transactionsData ?? []) {
-    const month = String(transaction.date).slice(0, 7);
-    const row = byMonth.get(month) ?? { month, payments: 0, expenses: 0 };
-    if (transaction.type === "payment") row.payments += Number(transaction.amount);
-    if (transaction.type === "expense") row.expenses += Number(transaction.amount);
-    byMonth.set(month, row);
-  }
+  const clients = await getClients();
 
   let totalBalance = 0;
   let totalPayments = 0;
@@ -135,7 +198,6 @@ export async function getDashboardData() {
     totalBalance,
     totalPayments,
     totalExpenses,
-    chartData: Array.from(byMonth.values()),
     userRole: currentUser?.role || null,
   };
 }
@@ -143,12 +205,12 @@ export async function getAllTransactions() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("transactions")
-    .select("*, clients(name, profit), users!transactions_created_by_fkey(full_name)")
+    .select("*, clients(name, profit, profit_type), cases(title), users!transactions_created_by_fkey(full_name)")
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return data as (LedgerTransaction & { clients: { name: string; profit: number | null }; users: { full_name: string } })[];
+  return data as (LedgerTransaction & { clients: { name: string; profit: number | null; profit_type: string }; cases: { title: string } | null; users: { full_name: string } })[];
 }
 
 export async function getCurrentUser() {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
-import { Scale, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -108,8 +108,8 @@ export default function SetPasswordPage() {
       <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-[#121210]">
         <div className="w-full max-w-md space-y-6 text-center">
           <div className="flex flex-col items-center">
-            <div className="flex size-12 items-center justify-center rounded-lg bg-ink-900 text-white dark:bg-brass-600">
-              <Scale className="size-6" aria-hidden />
+            <div className="flex size-12 items-center justify-center shrink-0">
+              <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="mt-6 text-xl font-semibold text-ink-900 dark:text-ink-50">{t("invalidTitle")}</h1>
             <p className="mt-2 text-sm text-ink-700 dark:text-ink-300">{error ?? t("invalidLink")}</p>
@@ -132,8 +132,8 @@ export default function SetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-[#121210]">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center">
-          <div className="flex size-12 items-center justify-center rounded-lg bg-ink-900 text-white dark:bg-brass-600">
-            <Scale className="size-6" aria-hidden />
+          <div className="flex size-12 items-center justify-center shrink-0">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-ink-900 dark:text-ink-50">
             {t("title")}

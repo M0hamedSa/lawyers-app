@@ -12,6 +12,13 @@ end $$;
 
 do $$
 begin
+  create type public.profit_type as enum ('monthly', 'per_case');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
   create type public.transaction_type as enum ('payment', 'expense');
 exception
   when duplicate_object then null;
@@ -37,7 +44,20 @@ create table if not exists public.clients (
   name text not null,
   phone text,
   email text,
+  profit_type public.profit_type not null default 'monthly',
   profit numeric(12, 2) default 0,
+  created_by uuid references public.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.cases (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients(id) on delete cascade,
+  title text not null,
+  description text,
+  status text not null default 'open',
+  profit_amount numeric(12, 2) default 0,
   created_by uuid references public.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -54,6 +74,7 @@ create table if not exists public.client_access (
 create table if not exists public.transactions (
   id uuid primary key default gen_random_uuid(),
   client_id uuid not null references public.clients(id) on delete cascade,
+  case_id uuid references public.cases(id) on delete cascade,
   type public.transaction_type not null,
   amount numeric(12, 2) not null check (amount > 0),
   description text not null,
@@ -65,6 +86,8 @@ create table if not exists public.transactions (
 );
 
 create index if not exists clients_name_idx on public.clients using gin (to_tsvector('simple', name));
+create index if not exists cases_client_id_idx on public.cases (client_id);
+create index if not exists cases_title_idx on public.cases using gin (to_tsvector('simple', title));
 create index if not exists transactions_client_id_date_idx on public.transactions (client_id, date desc);
 create index if not exists transactions_date_idx on public.transactions (date);
 
@@ -88,6 +111,11 @@ create trigger clients_set_updated_at
 before update on public.clients
 for each row execute function public.set_updated_at();
 
+drop trigger if exists cases_set_updated_at on public.cases;
+create trigger cases_set_updated_at
+before update on public.cases
+for each row execute function public.set_updated_at();
+
 drop trigger if exists transactions_set_updated_at on public.transactions;
 create trigger transactions_set_updated_at
 before update on public.transactions
@@ -106,9 +134,24 @@ from public.clients c
 left join public.transactions t on t.client_id = c.id
 group by c.id;
 
+create or replace view public.case_financial_summary as
+select
+  cs.id as case_id,
+  cs.client_id,
+  coalesce(sum(t.amount) filter (where t.type = 'payment'), 0)::numeric(12, 2) as total_payments,
+  coalesce(sum(t.amount) filter (where t.type = 'expense'), 0)::numeric(12, 2) as total_expenses,
+  (
+    coalesce(sum(t.amount) filter (where t.type = 'payment'), 0)
+    - coalesce(sum(t.amount) filter (where t.type = 'expense'), 0)
+  )::numeric(12, 2) as balance
+from public.cases cs
+left join public.transactions t on t.case_id = cs.id
+group by cs.id, cs.client_id;
+
 alter table public.users enable row level security;
 alter table public.clients enable row level security;
 alter table public.client_access enable row level security;
+alter table public.cases enable row level security;
 alter table public.transactions enable row level security;
 
 -- Users policies

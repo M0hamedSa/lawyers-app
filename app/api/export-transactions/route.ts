@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     const date = searchParams.get('date') || '';
     const type = searchParams.get('type') || '';
     const clientId = searchParams.get('client_id') || '';
+    const caseId = searchParams.get('case_id') || '';
     const locale = searchParams.get('locale') || 'en';
 
     // Load translations
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     let dbQuery = supabase
       .from("transactions")
-      .select("*, clients(name, profit), users!transactions_created_by_fkey(full_name)")
+      .select("*, clients(name, profit, profit_type), cases(title), users!transactions_created_by_fkey(full_name)")
       .order("date", { ascending: false });
 
     if (user.role !== "superadmin") {
@@ -51,6 +52,9 @@ export async function GET(request: Request) {
       if (user.role !== 'superadmin') {
         dbQuery = dbQuery.neq('type', 'payment');
       }
+    }
+    if (caseId) {
+      dbQuery = dbQuery.eq('case_id', caseId);
     }
     if (date) dbQuery = dbQuery.eq('date', date);
     if (type === 'payment' || type === 'expense') {
@@ -75,48 +79,29 @@ export async function GET(request: Request) {
     const transactionsToReport = filteredTransactions;
 
     let totalIncome = 0;
-    let rawTotalIncome = 0;
     let totalExpense = 0;
-    let totalProfit = 0;
-    const uniqueClientIds = new Set();
 
     transactionsToReport.forEach(t => {
       if (t.type === 'payment') {
         totalIncome += Number(t.amount);
-        rawTotalIncome += Number(t.amount);
       }
       if (t.type === 'expense') totalExpense += Number(t.amount);
-
-      if (user.role === 'superadmin' && t.client_id) {
-        if (!uniqueClientIds.has(t.client_id)) {
-          uniqueClientIds.add(t.client_id);
-          const clientProfit = t.clients?.profit || 0;
-          totalProfit += Number(clientProfit);
-        }
-      }
     });
 
-    if (user.role === 'superadmin') {
-      totalIncome = Math.max(0, totalIncome - totalProfit);
-    } else {
+    if (user.role !== 'superadmin') {
       totalIncome = user.cash_advance || 0;
     }
 
-    const isClientReport = !!clientId;
     const isSuperAdmin = user.role === 'superadmin';
-    const showProfitCard = isClientReport && isSuperAdmin;
 
-    const firstCardLabel = showProfitCard
-      ? (t('Clients.form.profit') || 'Profit')
-      : (isSuperAdmin ? t('Dashboard.totalPayments') : (t('Common.cashAdvance') || 'Cash Advance'));
-
-    const firstCardValue = showProfitCard
-      ? totalProfit
-      : totalIncome;
+    const firstCardLabel = t('Dashboard.totalPayments') || 'Total Payments';
+    const firstCardValue = totalIncome;
 
     const isRtl = locale === 'ar';
-    const reportTitle = clientId && transactionsToReport.length > 0
-      ? `${transactionsToReport[0].clients.name} - ${t('Admin.exportReport')}`
+    const reportTitle = caseId && transactionsToReport.length > 0
+      ? `${transactionsToReport[0].clients?.name || ''} - ${transactionsToReport[0].cases?.title || ''} - ${t('Admin.exportReport')}`
+      : clientId && transactionsToReport.length > 0
+      ? `${transactionsToReport[0].clients?.name || ''} - ${t('Admin.exportReport')}`
       : t('Admin.exportReport');
 
     const htmlContent = `
@@ -256,16 +241,12 @@ export async function GET(request: Request) {
         </div>
         
         <div class="summary-strip">
-          ${showProfitCard ? `
-          <div class="summary-item">
-            <div class="summary-label">${t('Dashboard.totalPayments') || 'Total Payments'}</div>
-            <div class="summary-value income">+${rawTotalIncome.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
-          </div>
-          ` : ''}
+          ${isSuperAdmin ? `
           <div class="summary-item">
             <div class="summary-label">${firstCardLabel}</div>
             <div class="summary-value income">+${firstCardValue.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          ` : ''}
           <div class="summary-item">
             <div class="summary-label">${isSuperAdmin ? t('Dashboard.totalExpenses') : (t('Common.myExpenses') || 'My Expenses')}</div>
             <div class="summary-value expense">-${totalExpense.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
@@ -282,6 +263,7 @@ export async function GET(request: Request) {
               <th style="width: 40px; text-align: center;">#</th>
               <th>${t('Transaction.columns.date')}</th>
               <th>${t('Clients.columns.client')}</th>
+              ${!caseId ? `<th>${t('Cases.title') || 'Case'}</th>` : ''}
               <th>${t('Transaction.columns.type')}</th>
               <th>${t('Transaction.columns.description')}</th>
               <th class="amount-cell">${t('Transaction.columns.amount')}</th>
@@ -293,6 +275,7 @@ export async function GET(request: Request) {
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
                 <td>${new Date(t_row.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                 <td>${t_row.clients?.name || ''}</td>
+                ${!caseId ? `<td>${t_row.cases?.title || '-'}</td>` : ''}
                 <td>${t(t_row.type === 'payment' ? 'Common.payment' : 'Common.expense')}</td>
                 <td>${t_row.description}</td>
                 <td class="amount-cell ${t_row.type === 'payment' ? 'payment' : 'expense'}">
@@ -300,7 +283,7 @@ export async function GET(request: Request) {
                 </td>
               </tr>
             `).join('')}
-            ${transactionsToReport.length === 0 ? `<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults')}</td></tr>` : ''}
+            ${transactionsToReport.length === 0 ? `<tr><td colspan="${!caseId ? 7 : 6}" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults')}</td></tr>` : ''}
           </tbody>
         </table>
 
@@ -373,8 +356,10 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const generatedFilename = clientId && transactionsToReport.length > 0
-      ? (locale === 'ar' ? `تقرير_عميل_${transactionsToReport[0].clients.name}.pdf` : `client_${transactionsToReport[0].clients.name}_report.pdf`)
+    const generatedFilename = caseId && transactionsToReport.length > 0
+      ? (locale === 'ar' ? `تقرير_قضية_${transactionsToReport[0].cases?.title}.pdf` : `case_${transactionsToReport[0].cases?.title}_report.pdf`)
+      : clientId && transactionsToReport.length > 0
+      ? (locale === 'ar' ? `تقرير_عميل_${transactionsToReport[0].clients?.name}.pdf` : `client_${transactionsToReport[0].clients?.name}_report.pdf`)
       : (locale === 'ar' ? "تقرير_المعاملات.pdf" : "transactions_report.pdf");
 
     return new NextResponse(pdfBuffer as unknown as BodyInit, {

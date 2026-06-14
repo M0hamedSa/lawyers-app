@@ -11,7 +11,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Field, inputClassName } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
-import type { ClientWithSummary } from "@/lib/supabase/types";
+import type { ClientWithSummary, ProfitType } from "@/lib/supabase/types";
 import { formatCurrency } from "@/lib/utils";
 import { encodeId } from "@/lib/id-utils";
 
@@ -20,10 +20,13 @@ type ClientForm = {
   name: string;
   phone: string;
   email: string;
+  profit_type: ProfitType;
   profit: string;
+  status: "active" | "inactive";
+  monthly_payment_day: string;
 };
 
-const emptyForm: ClientForm = { name: "", phone: "", email: "", profit: "" };
+const emptyForm: ClientForm = { name: "", phone: "", email: "", profit_type: "monthly", profit: "", status: "active", monthly_payment_day: "" };
 
 export function ClientsPageClient({ 
   initialClients, 
@@ -37,7 +40,6 @@ export function ClientsPageClient({
   const locale = useLocale();
   const t = useTranslations("Clients");
   const tCommon = useTranslations("Common");
-  const tDashboard = useTranslations("Dashboard");
   const [clients, setClients] = useState(initialClients);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<ClientForm>(emptyForm);
@@ -71,7 +73,10 @@ export function ClientsPageClient({
       name: form.name.trim(),
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
-      profit: form.profit ? Number(form.profit) : 0,
+      profit_type: form.profit_type,
+      profit: form.profit_type === "monthly" ? (form.profit ? Number(form.profit) : 0) : 0,
+      status: form.status,
+      monthly_payment_day: form.profit_type === "monthly" ? (form.monthly_payment_day ? Number(form.monthly_payment_day) : null) : null,
     };
 
     const { data: userResult, error: authError } = await supabase.auth.getUser();
@@ -154,9 +159,12 @@ export function ClientsPageClient({
     setForm({
       id: client.id,
       name: client.name,
-      phone: client.phone ?? "",
-      email: client.email ?? "",
-      profit: client.profit != null ? String(client.profit) : "",
+      phone: client.phone || "",
+      email: client.email || "",
+      profit_type: client.profit_type,
+      profit: client.profit?.toString() || "",
+      status: client.status,
+      monthly_payment_day: client.monthly_payment_day?.toString() || "",
     });
     setError(null);
     setModalOpen(true);
@@ -198,12 +206,36 @@ export function ClientsPageClient({
                 key: "name",
                 header: t("columns.client"),
                 cell: (client) => (
-                  <Link
-                    href={`/clients/${encodeId(client.id)}` as Route}
-                    className="font-semibold text-ink-900 underline-offset-2 hover:text-brass-700 hover:underline dark:text-ink-50 dark:hover:text-brass-400"
-                  >
-                    {client.name}
-                  </Link>
+                  <div className="flex flex-col gap-1">
+                    <Link
+                      href={`/clients/${encodeId(client.id)}` as Route}
+                      className="font-semibold text-ink-900 underline-offset-2 hover:text-brass-700 hover:underline dark:text-ink-50 dark:hover:text-brass-400"
+                    >
+                      {client.name}
+                    </Link>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      {client.status === "active" ? (
+                        <span className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          {t("form.active")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                          {t("form.inactive")}
+                        </span>
+                      )}
+                      {userRole === "superadmin" && (
+                        <span
+                          className={
+                            client.profit_type === "monthly"
+                              ? "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                              : "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                          }
+                        >
+                          {client.profit_type === "monthly" ? t("form.monthly") : t("form.perCase")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 ),
               },
               {
@@ -219,26 +251,13 @@ export function ClientsPageClient({
               ...(userRole === "superadmin"
                 ? [
                     {
-                      key: "total_payments",
-                      header: tDashboard("totalPayments"),
+                      key: "payments",
+                      header: t("columns.payments"),
                       cell: (client: ClientWithSummary) => (
                         <span className="font-medium tabular-nums text-green-700 dark:text-green-400">
                           {formatCurrency(client.total_payments, locale)}
                         </span>
                       ),
-                    },
-                    {
-                      key: "payments",
-                      header: t("columns.payments"),
-                      cell: (client: ClientWithSummary) => {
-                        const profitToDeduct = Number(client.profit || 0);
-                        const adjustedPayments = Math.max(0, client.total_payments - profitToDeduct);
-                        return (
-                          <span className="font-medium tabular-nums text-green-700 dark:text-green-400">
-                            {formatCurrency(adjustedPayments, locale)}
-                          </span>
-                        );
-                      },
                     },
                     {
                       key: "expenses",
@@ -252,22 +271,9 @@ export function ClientsPageClient({
                     {
                       key: "balance",
                       header: t("columns.balance"),
-                      cell: (client: ClientWithSummary) => {
-                        const profitToDeduct = Number(client.profit || 0);
-                        const adjustedBalance = client.balance - profitToDeduct;
-                        return (
-                          <span className="font-semibold tabular-nums text-ink-900 dark:text-ink-50">
-                            {formatCurrency(adjustedBalance, locale)}
-                          </span>
-                        );
-                      },
-                    },
-                    {
-                      key: "profit",
-                      header: t("form.profit") || "Profit",
                       cell: (client: ClientWithSummary) => (
-                        <span className="font-medium tabular-nums text-brass-700 dark:text-brass-400">
-                          {formatCurrency(Number(client.profit || 0), locale)}
+                        <span className="font-semibold tabular-nums text-ink-900 dark:text-ink-50">
+                          {formatCurrency(client.balance, locale)}
                         </span>
                       ),
                     },
@@ -349,19 +355,66 @@ export function ClientsPageClient({
               />
             </Field>
           </div>
+          
           {userRole === "superadmin" && (
-            <Field label={t("form.profit") || "Profit Amount"}>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className={inputClassName}
-                value={form.profit}
-                onChange={(event) => setForm((current) => ({ ...current, profit: event.target.value }))}
-                placeholder="0.00"
-              />
-            </Field>
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 mt-4">
+                <Field label={t("form.profitType")}>
+                  <select
+                    className={inputClassName}
+                    value={form.profit_type}
+                    onChange={(event) => setForm((current) => ({ ...current, profit_type: event.target.value as ProfitType }))}
+                  >
+                    <option value="monthly">{t("form.monthly")}</option>
+                    <option value="per_case">{t("form.perCase")}</option>
+                  </select>
+                </Field>
+                {form.profit_type === "monthly" && (
+                  <Field label={t("form.profitAmount")}>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className={inputClassName}
+                      value={form.profit}
+                      onChange={(event) => setForm((current) => ({ ...current, profit: event.target.value }))}
+                    />
+                  </Field>
+                )}
+              </div>
+
+              {form.profit_type === "monthly" && (
+                <div className="mt-4">
+                  <Field label={t("form.monthlyPaymentDay")}>
+                    <input
+                      type="number"
+                      min="1"
+                      max="28"
+                      className={inputClassName}
+                      value={form.monthly_payment_day}
+                      onChange={(event) => setForm((current) => ({ ...current, monthly_payment_day: event.target.value }))}
+                    />
+                  </Field>
+                </div>
+              )}
+            </>
           )}
+
+          {(userRole === "superadmin" || userRole === "admin") && (
+            <div className="mt-4">
+              <Field label={t("form.status")}>
+                <select
+                  className={inputClassName}
+                  value={form.status}
+                  onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as "active" | "inactive" }))}
+                >
+                  <option value="active">{t("form.active")}</option>
+                  <option value="inactive">{t("form.inactive")}</option>
+                </select>
+              </Field>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-2">
             <ActionButton type="button" variant="secondary" onClick={() => setModalOpen(false)}>
               {tCommon("cancel")}

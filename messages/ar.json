@@ -3,6 +3,7 @@
     "cancel": "إلغاء",
     "save": "حفظ",
     "saving": "جاري الحفظ...",
+    "deleting": "جاري الحذف...",
     "edit": "تعديل",
     "delete": "حذف",
     "noPhone": "لا يوجد هاتف",
@@ -20,7 +21,7 @@
     "detailedExpenses": "تفاصيل المصروفات"
   },
   "Login": {
-    "title": "تسجيل الدخول إلى True Legal Law Firm",
+    "title": "تسجيل الدخول إلى True Legal",
     "subtitle": "مرحباً بك مجدداً، يرجى إدخال بيانات الاعتماد",
     "email": "البريد الإلكتروني",
     "password": "كلمة المرور",
@@ -46,7 +47,7 @@
     "placeholder": "ابحث عن عميل بالاسم..."
   },
   "Sidebar": {
-    "appName": "True Legal Law Firm",
+    "appName": "True Legal",
     "subtitle": "محمد فريد",
     "logout": "تسجيل الخروج",
     "signedInAs": "مسجّل الدخول كـ",
@@ -77,15 +78,55 @@
       "contact": "التواصل",
       "payments": "الدفعات",
       "expenses": "المصروفات",
-      "balance": "الرصيد"
+      "balance": "الرصيد",
+      "status": "الحالة",
+      "profitDetails": "تفاصيل الربح"
     },
     "form": {
       "name": "الاسم",
       "phone": "رقم الهاتف",
       "email": "البريد الإلكتروني",
-      "profit": "قيمة الربح",
+      "profitType": "نوع الربح",
+      "monthly": "شهري",
+      "perCase": "لكل قضية",
+      "profitAmount": "مبلغ الربح",
+      "status": "الحالة",
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "monthlyPaymentDay": "يوم الدفع (1-28)",
       "saveClient": "حفظ العميل"
     }
+  },
+  "Cases": {
+    "title": "القضايا",
+    "newCase": "قضية جديدة",
+    "editCase": "تعديل القضية",
+    "deleteCase": "حذف القضية",
+    "deleteConfirm": "هل أنت متأكد من حذف هذه القضية؟ سيتم حذف جميع المعاملات المرتبطة بها.",
+    "empty": "لا يوجد قضايا بعد.",
+    "columns": {
+      "title": "العنوان",
+      "status": "الحالة",
+      "profit": "قيمة الربح",
+      "payments": "الدفعات",
+      "expenses": "المصروفات",
+      "balance": "الرصيد"
+    },
+    "form": {
+      "title": "عنوان القضية",
+      "description": "الوصف",
+      "profitAmount": "قيمة الربح",
+      "saveCase": "حفظ القضية"
+    },
+    "status": {
+      "open": "مفتوحة",
+      "closed": "مغلقة"
+    },
+    "exportCaseReport": "تصدير تقرير القضية",
+    "exportClientReport": "تصدير تقرير العميل (مفصل بالقضايا)",
+    "lockedCase": "هذه القضية مغلقة. لا يمكن إضافة معاملات جديدة.",
+    "lockedClient": "هذا العميل غير نشط. لا يمكن إضافة معاملات جديدة.",
+    "lockedHint": "يمكنك إعادة فتحها عن طريق تعديل حالة القضية أو العميل."
   },
   "ClientDetails": {
     "overview": "نظرة عامة",
@@ -95,6 +136,9 @@
     "totalPayments": "إجمالي الدفعات",
     "totalExpenses": "إجمالي المصروفات",
     "currentBalance": "الرصيد الحالي",
+    "monthlyProfit": "الربح الشهري",
+    "totalProfit": "إجمالي الربح",
+    "caseProfit": "ربح القضية",
     "clientOverview": "نظرة عامة على العميل",
     "transactions": "المعاملات",
     "balance": "الرصيد",
@@ -111,7 +155,8 @@
       "type": "النوع",
       "description": "البيان (الوصف)",
       "voucher": "السند",
-      "amount": "المبلغ"
+      "amount": "المبلغ",
+      "createdBy": "بواسطة"
     },
     "vouchers": {
       "cash": "نقدي",
@@ -123,21 +168,11 @@
     "search": "بحث في المعاملات...",
     "filterByDate": "تصفية حسب التاريخ",
     "allDates": "جميع التواريخ",
+    "allClients": "جميع العملاء",
+    "allCases": "جميع القضايا",
+    "clearFilters": "مسح الفلاتر",
     "noResults": "لا توجد معاملات تطابق بحثك.",
     "allTypes": "جميع الأنواع"
-  },
-  "Charts": {
-    "incomeExpense": "الدخل مقابل المصاريف",
-    "paymentsVsExpenses": "المدفوعات مقابل المصروفات بمرور الوقت",
-    "distribution": "توزيع المعاملات",
-    "balanceHistory": "سجل الرصيد",
-    "volumeDistribution": "توزيع الحجم",
-    "systemIncomeExpense": "دخل النظام مقابل مصاريفه",
-    "income": "دخل",
-    "expense": "مصروف",
-    "payments": "الدفعات",
-    "expenses": "المصاريف",
-    "balance": "الرصيد"
   },
   "Admin": {
     "title": "المسؤول",
@@ -193,11 +228,11 @@
     "user": "عضو فريق"
   },
   "SEO": {
-    "title": "ترو ليجال للمحاماة",
+    "title": "ترو ليجال",
     "description": "محمد فريد - إدارة الحسابات المالية للعملاء",
     "keywords": "مكتب محاماة, إدارة مالية, حسابات العملاء, فواتير قانونية",
-    "ogTitle": "ترو ليجال للمحاماة",
-    "ogDescription": "إدارة الشؤون المالية للعملاء، المعاملات، والأرصدة بشكل آمن مع بوابة ترو ليجال للمحاماة.",
+    "ogTitle": "ترو ليجال",
+    "ogDescription": "إدارة الشؤون المالية للعملاء، المعاملات، والأرصدة بشكل آمن مع بوابة ترو ليجال.",
     "siteName": "ترو ليجال"
   }
 }

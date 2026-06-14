@@ -10,48 +10,57 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import type { Metadata } from "next";
 
 import { TransactionSearch } from "@/components/admin/transaction-search";
 import { ExportTransactionsButton } from "@/components/admin/export-transactions-button";
-import { 
-  IncomeExpenseBarChart, 
-  TransactionDistributionChart 
-} from "@/components/charts/transaction-charts";
 import { FinanceMetric } from "@/components/ui/finance-metric";
 
 export const dynamic = "force-dynamic";
-
-import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
   const tAdmin = await getTranslations("Admin");
   return { title: tAdmin("allTransactions") };
 }
+
 export default async function AdminTransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ query?: string; date?: string; type?: string }>;
+  searchParams: Promise<{ query?: string; date?: string; type?: string; client_id?: string; case_id?: string }>;
 }) {
-  const { query, date, type } = await searchParams;
+  const { query, date, type, client_id, case_id } = await searchParams;
   const user = await getCurrentUser();
-  
+
   if (user?.role !== "admin" && user?.role !== "superadmin") {
     redirect("/dashboard");
   }
 
   const supabase = await createClient();
+
+  // Fetch clients and cases for filter dropdowns
+  const [clientsResult, casesResult] = await Promise.all([
+    supabase.from("clients").select("id, name").order("name", { ascending: true }),
+    supabase.from("cases").select("id, title, client_id").order("title", { ascending: true }),
+  ]);
+
+  const clientsList = clientsResult.data || [];
+  const casesList = casesResult.data || [];
+
+  // Build transactions query
   let dbQuery = supabase
     .from("transactions")
-    .select("*, clients(name, profit), users!transactions_created_by_fkey(full_name)")
+    .select("*, clients(name, profit), cases(title), users!transactions_created_by_fkey(full_name)")
     .order("date", { ascending: false });
 
   if (user.role !== "superadmin") {
     dbQuery = dbQuery.eq("created_by", user.id);
   }
 
-  if (date) dbQuery = dbQuery.eq('date', date);
-  if (type === 'payment' || type === 'expense') {
-    dbQuery = dbQuery.eq('type', type);
+  if (client_id) dbQuery = dbQuery.eq("client_id", client_id);
+  if (case_id) dbQuery = dbQuery.eq("case_id", case_id);
+  if (date) dbQuery = dbQuery.eq("date", date);
+  if (type === "payment" || type === "expense") {
+    dbQuery = dbQuery.eq("type", type);
   }
 
   const { data: transactionsData, error: dbError } = await dbQuery;
@@ -60,10 +69,12 @@ export default async function AdminTransactionsPage({
   let transactions = transactionsData || [];
   if (query) {
     const q = query.toLowerCase();
-    transactions = transactions.filter(t => 
-      t.clients.name.toLowerCase().includes(q) || 
-      (t.users?.full_name || "").toLowerCase().includes(q) ||
-      (t.description || "").toLowerCase().includes(q)
+    transactions = transactions.filter(
+      (t) =>
+        (t.clients?.name || "").toLowerCase().includes(q) ||
+        (t.users?.full_name || "").toLowerCase().includes(q) ||
+        (t.description || "").toLowerCase().includes(q) ||
+        (t.cases?.title || "").toLowerCase().includes(q),
     );
   }
 
@@ -71,7 +82,11 @@ export default async function AdminTransactionsPage({
   const t = await getTranslations("Transaction");
   const tCommon = await getTranslations("Common");
   const tAdmin = await getTranslations("Admin");
-  const tCharts = await getTranslations("Charts");
+  const tCases = await getTranslations("Cases");
+  const tClients = await getTranslations("Clients");
+
+  const totalPayments = transactions.reduce((acc, t) => acc + (t.type === "payment" ? Number(t.amount) : 0), 0);
+  const totalExpenses = transactions.reduce((acc, t) => acc + (t.type === "expense" ? Number(t.amount) : 0), 0);
 
   return (
     <div className="space-y-6">
@@ -84,58 +99,31 @@ export default async function AdminTransactionsPage({
             {tAdmin("transactionsLog")}
           </h1>
         </div>
-        <ExportTransactionsButton />
+        <ExportTransactionsButton clientId={client_id} caseId={case_id} />
       </div>
 
-      <TransactionSearch />
+      <TransactionSearch clients={clientsList} cases={casesList} />
 
       {transactions.length > 0 && (
         <div className="grid gap-4 md:grid-cols-3">
-          <FinanceMetric 
-            label={tCharts("payments") || "Total Payments"} 
-            value={formatCurrency(transactions.reduce((acc, t) => acc + (t.type === 'payment' ? Number(t.amount) : 0), 0), locale)} 
-            tone="payment" 
+          <FinanceMetric
+            label={tAdmin("title") === "المسؤول" ? "إجمالي الدفعات" : "Total Payments"}
+            value={formatCurrency(totalPayments, locale)}
+            tone="payment"
           />
-          <FinanceMetric 
-            label={tCharts("expenses") || "Total Expenses"} 
-            value={formatCurrency(transactions.reduce((acc, t) => acc + (t.type === 'expense' ? Number(t.amount) : 0), 0), locale)} 
-            tone="expense" 
+          <FinanceMetric
+            label={tAdmin("title") === "المسؤول" ? "إجمالي المصروفات" : "Total Expenses"}
+            value={formatCurrency(totalExpenses, locale)}
+            tone="expense"
           />
-          <FinanceMetric 
-            label={tCharts("balance") || "Balance"} 
-            value={formatCurrency(
-              transactions.reduce((acc, t) => acc + (t.type === 'payment' ? Number(t.amount) : 0), 0) - 
-              transactions.reduce((acc, t) => acc + (t.type === 'expense' ? Number(t.amount) : 0), 0), 
-              locale
-            )} 
+          <FinanceMetric
+            label={tCommon("balance")}
+            value={formatCurrency(totalPayments - totalExpenses, locale)}
             tone="balance"
-            rawValue={
-              transactions.reduce((acc, t) => acc + (t.type === 'payment' ? Number(t.amount) : 0), 0) - 
-              transactions.reduce((acc, t) => acc + (t.type === 'expense' ? Number(t.amount) : 0), 0)
-            }
+            rawValue={totalPayments - totalExpenses}
           />
-
         </div>
       )}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardContent className="pt-6">
-            <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-              {tCharts("systemIncomeExpense")}
-            </h3>
-            <IncomeExpenseBarChart transactions={transactions} showPayments={user?.role === "superadmin"} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-              {tCharts("distribution")}
-            </h3>
-            <TransactionDistributionChart transactions={transactions} />
-          </CardContent>
-        </Card>
-      </div>
 
       <Card>
         <CardContent>
@@ -151,19 +139,34 @@ export default async function AdminTransactionsPage({
               },
               {
                 key: "client",
-                header: "Client",
+                header: tClients("columns.client"),
                 cell: (t) => (
                   <Link
                     href={`/clients/${encodeId(t.client_id)}` as Route}
                     className="font-medium text-ink-900 underline-offset-2 hover:text-brass-700 hover:underline dark:text-ink-100 dark:hover:text-brass-400"
                   >
-                    {t.clients.name}
+                    {t.clients?.name || "-"}
                   </Link>
                 ),
               },
               {
+                key: "case",
+                header: tCases("title"),
+                cell: (t) =>
+                  t.case_id && t.cases?.title ? (
+                    <Link
+                      href={`/clients/${encodeId(t.client_id)}/cases/${encodeId(t.case_id)}` as Route}
+                      className="text-sm font-medium text-ink-900 underline-offset-2 hover:text-brass-700 hover:underline dark:text-ink-100 dark:hover:text-brass-400"
+                    >
+                      {t.cases.title}
+                    </Link>
+                  ) : (
+                    <span className="text-sm text-ink-500">-</span>
+                  ),
+              },
+              {
                 key: "creator",
-                header: "Made By",
+                header: tAdmin("title") === "المسؤول" ? "بواسطة" : "Made By",
                 cell: (t) => (
                   <span className="text-ink-700 dark:text-ink-300">{t.users?.full_name || "Unknown"}</span>
                 ),
@@ -187,9 +190,7 @@ export default async function AdminTransactionsPage({
               {
                 key: "description",
                 header: t("columns.description"),
-                cell: (t) => (
-                  <span className="break-words text-ink-900 dark:text-ink-100">{t.description}</span>
-                ),
+                cell: (t) => <span className="break-words text-ink-900 dark:text-ink-100">{t.description}</span>,
               },
               {
                 key: "amount",
@@ -199,9 +200,7 @@ export default async function AdminTransactionsPage({
                   <span
                     className={cn(
                       "font-semibold tabular-nums",
-                      t.type === "payment"
-                        ? "text-green-700 dark:text-green-400"
-                        : "text-red-700 dark:text-red-400",
+                      t.type === "payment" ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400",
                     )}
                   >
                     {t.type === "payment" ? "+" : "-"}

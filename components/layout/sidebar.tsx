@@ -3,7 +3,7 @@
 import { ComponentType } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
-import { BriefcaseBusiness, LayoutDashboard, Scale, History, Users } from "lucide-react";
+import { BriefcaseBusiness, LayoutDashboard, History, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -56,8 +56,8 @@ export function Sidebar({
     >
       {/* Logo — hidden on mobile, visible on desktop */}
       <div className="hidden h-14 shrink-0 items-center gap-3 border-b border-ink-100 px-5 dark:border-ink-800 lg:flex">
-        <div className="flex size-9 items-center justify-center rounded-md bg-ink-900 text-white dark:bg-brass-600">
-          <Scale className="size-5" aria-hidden />
+        <div className="flex size-9 items-center justify-center shrink-0">
+          <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-wide text-brass-700 dark:text-brass-400">

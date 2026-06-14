@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { ClientDetailsClient } from "@/components/clients/client-details-client";
-import { getClient, getClientTransactions, getCurrentUser, getUserFinancials } from "@/lib/supabase/queries";
+import { getClient, getCases, getCurrentUser, getUserFinancials } from "@/lib/supabase/queries";
 import { decodeId } from "@/lib/id-utils";
 
 export const dynamic = "force-dynamic";
@@ -24,16 +24,16 @@ export default async function ClientDetailsPage({ params }: { params: Promise<{ 
   const id = decodeId(hash);
 
   try {
-    const [client, transactions, currentUser, userFinancials] = await Promise.all([
+    const [client, cases, currentUser, userFinancials] = await Promise.all([
       getClient(id),
-      getClientTransactions(id),
+      getCases(id),
       getCurrentUser(),
       getUserFinancials(),
     ]);
 
     return <ClientDetailsClient 
       client={client} 
-      initialTransactions={transactions} 
+      initialCases={cases} 
       currentUser={currentUser}
       userGlobalBalance={userFinancials?.balance}
     />;

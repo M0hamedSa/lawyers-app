@@ -3,6 +3,7 @@
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving...",
+    "deleting": "Deleting...",
     "edit": "Edit",
     "delete": "Delete",
     "noPhone": "No phone",
@@ -20,7 +21,7 @@
     "detailedExpenses": "Detailed Expense Transactions"
   },
   "Login": {
-    "title": "Sign in to True Legal Law Firm",
+    "title": "Sign in to True Legal",
     "subtitle": "Welcome back, please enter your credentials",
     "email": "Email address",
     "password": "Password",
@@ -46,7 +47,7 @@
     "placeholder": "Search client by name..."
   },
   "Sidebar": {
-    "appName": "True Legal Law Firm",
+    "appName": "True Legal",
     "subtitle": "Mohamed Faried",
     "logout": "Log out",
     "signedInAs": "Signed in as",
@@ -77,15 +78,55 @@
       "contact": "Contact",
       "payments": "Payments",
       "expenses": "Expenses",
-      "balance": "Balance"
+      "balance": "Balance",
+      "status": "Status",
+      "profitDetails": "Profit Details"
     },
     "form": {
       "name": "Name",
       "phone": "Phone",
-      "email": "Email",
-      "profit": "Profit Amount",
+      "email": "Email Address",
+      "profitType": "Profit Type",
+      "monthly": "Monthly",
+      "perCase": "Per Case",
+      "profitAmount": "Profit Amount",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "monthlyPaymentDay": "Payment Day (1-28)",
       "saveClient": "Save client"
     }
+  },
+  "Cases": {
+    "title": "Cases",
+    "newCase": "New Case",
+    "editCase": "Edit Case",
+    "deleteCase": "Delete Case",
+    "deleteConfirm": "Are you sure you want to delete this case? This will delete all its transactions.",
+    "empty": "No cases yet.",
+    "columns": {
+      "title": "Title",
+      "status": "Status",
+      "profit": "Profit Amount",
+      "payments": "Payments",
+      "expenses": "Expenses",
+      "balance": "Balance"
+    },
+    "form": {
+      "title": "Case Title",
+      "description": "Description",
+      "profitAmount": "Profit Amount",
+      "saveCase": "Save Case"
+    },
+    "status": {
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "exportCaseReport": "Export Case Report",
+    "exportClientReport": "Export Client Report",
+    "lockedCase": "This case is closed. No new transactions can be added.",
+    "lockedClient": "This client is inactive. No new transactions can be added.",
+    "lockedHint": "You can reopen it by editing the case or client status."
   },
   "ClientDetails": {
     "overview": "Overview",
@@ -95,6 +136,9 @@
     "totalPayments": "Total payments",
     "totalExpenses": "Total expenses",
     "currentBalance": "Current balance",
+    "monthlyProfit": "Monthly Profit",
+    "totalProfit": "Total Profit",
+    "caseProfit": "Case Profit",
     "clientOverview": "Client overview",
     "transactions": "Transactions",
     "balance": "Balance",
@@ -111,7 +155,8 @@
       "type": "Type",
       "description": "Description",
       "voucher": "Voucher",
-      "amount": "Amount"
+      "amount": "Amount",
+      "createdBy": "Created By"
     },
     "vouchers": {
       "cash": "Cash",
@@ -123,21 +168,11 @@
     "search": "Search transactions...",
     "filterByDate": "Filter by date",
     "allDates": "All dates",
+    "allClients": "All clients",
+    "allCases": "All cases",
+    "clearFilters": "Clear filters",
     "noResults": "No transactions match your search.",
     "allTypes": "All Types"
-  },
-  "Charts": {
-    "incomeExpense": "Income vs Expense",
-    "paymentsVsExpenses": "Payments vs Expenses over time",
-    "distribution": "Transaction Distribution",
-    "balanceHistory": "Balance History",
-    "volumeDistribution": "Volume Distribution",
-    "systemIncomeExpense": "System Income vs Expense",
-    "payments": "Payments",
-    "expenses": "Expenses",
-    "income": "Income",
-    "expense": "Expense",
-    "balance": "Balance"
   },
   "Admin": {
     "title": "Admin",
@@ -193,11 +228,11 @@
     "user": "User"
   },
   "SEO": {
-    "title": "True Legal Law Firm",
+    "title": "True Legal",
     "description": "Mohamed Faried - Client finance office management",
     "keywords": "law firm, finance management, client accounts, legal billing",
-    "ogTitle": "True Legal Law Firm",
-    "ogDescription": "Manage client financials, transactions, and balances securely with True Legal Law Firm portal.",
+    "ogTitle": "True Legal",
+    "ogDescription": "Manage client financials, transactions, and balances securely with True Legal portal.",
     "siteName": "True Legal"
   }
 }

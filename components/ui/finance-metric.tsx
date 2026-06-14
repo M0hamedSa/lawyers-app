@@ -21,8 +21,7 @@ export function FinanceMetric({
             "mt-2 break-words text-xl font-normal tabular-nums sm:text-2xl",
             tone === "payment" && "text-green-700 dark:text-green-400",
             tone === "expense" && "text-red-700 dark:text-red-400",
-            tone === "balance" && rawValue < 0 && "text-red-700 dark:text-red-400",
-            tone === "balance" && rawValue >= 0 && "text-green-700 dark:text-green-400",
+            tone === "balance" && "text-ink-900 dark:text-ink-50",
           )}
         >
           {value}

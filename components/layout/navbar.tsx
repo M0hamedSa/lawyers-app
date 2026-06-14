@@ -117,12 +117,6 @@ export function Navbar({
                     </div>
                     <div className="space-y-1 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-ink-600 dark:text-ink-400">{tCommon("cashAdvance")}</span>
-                        <span className="font-semibold text-ink-900 dark:text-ink-50">
-                          {formatCurrency(financials.cashAdvance, locale)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
                         <span className="text-ink-600 dark:text-ink-400">{tCommon("myExpenses")}</span>
                         <span className="font-semibold text-red-600 dark:text-red-400">
                           {formatCurrency(financials.totalExpenses, locale)}

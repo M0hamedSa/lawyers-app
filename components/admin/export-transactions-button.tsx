@@ -5,7 +5,7 @@ import { Download, Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 
-export function ExportTransactionsButton({ clientId }: { clientId?: string }) {
+export function ExportTransactionsButton({ clientId, caseId }: { clientId?: string; caseId?: string }) {
   const [isExporting, setIsExporting] = useState(false);
   const searchParams = useSearchParams();
   const t = useTranslations("Admin");
@@ -29,6 +29,10 @@ export function ExportTransactionsButton({ clientId }: { clientId?: string }) {
 
       if (clientId) {
         url.searchParams.set("client_id", clientId);
+      }
+
+      if (caseId) {
+        url.searchParams.set("case_id", caseId);
       }
 
       const response = await fetch(url.toString());
