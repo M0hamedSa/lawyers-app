@@ -11,7 +11,7 @@ export function Field({
 }) {
   return (
     <label
-      className={cn("grid gap-1.5 text-sm font-medium text-ink-700 dark:text-ink-300", className)}
+      className={cn("grid gap-1.5 text-title-sm text-ink-700 min-w-0 dark:text-ink-300", className)}
     >
       <span>{label}</span>
       {children}
@@ -20,7 +20,7 @@ export function Field({
 }
 
 export const inputClassName =
-  "h-10 rounded-md border border-ink-100 bg-white px-3 text-sm text-ink-900 outline-none transition placeholder:text-ink-700/60 focus:border-brass-500 focus:ring-2 focus:ring-brass-100 dark:border-ink-600 dark:bg-ink-800 dark:text-ink-50 dark:placeholder:text-ink-400/60 dark:focus:border-brass-500 dark:focus:ring-brass-900/40";
+  "h-[44px] rounded-lg border border-ink-200 bg-white px-4 text-body-md text-ink-800 outline-none transition-all duration-150 placeholder:text-ink-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/15 focus:shadow-subtle dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100 dark:placeholder:text-ink-500 dark:focus:border-accent-500 dark:focus:ring-accent-500/20";
 
 export const textareaClassName =
-  "min-h-24 rounded-md border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none transition placeholder:text-ink-700/60 focus:border-brass-500 focus:ring-2 focus:ring-brass-100 dark:border-ink-600 dark:bg-ink-800 dark:text-ink-50 dark:placeholder:text-ink-400/60 dark:focus:border-brass-500 dark:focus:ring-brass-900/40";
+  "min-h-24 w-full rounded-lg border border-ink-200 bg-white px-4 py-3 text-body-md text-ink-800 outline-none transition-all duration-150 placeholder:text-ink-400 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/15 focus:shadow-subtle dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100 dark:placeholder:text-ink-500 dark:focus:border-accent-500 dark:focus:ring-accent-500/20";

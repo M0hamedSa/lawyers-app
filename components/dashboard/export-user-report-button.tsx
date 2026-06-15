@@ -40,7 +40,7 @@ export function ExportUserReportButton() {
     <button 
       onClick={handleExport} 
       disabled={isExporting}
-      className="inline-flex items-center gap-2 rounded-md border border-brass-600 bg-brass-50 px-4 py-2 text-sm font-semibold text-brass-800 shadow-sm hover:bg-brass-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-brass-700/50 dark:bg-brass-950/40 dark:text-brass-300 dark:hover:bg-brass-900/30"
+      className="inline-flex items-center gap-2 rounded-md border border-accent-600 bg-accent-50 px-4 py-2 text-sm font-semibold text-accent-800 hover:bg-accent-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-accent-700/50 dark:bg-accent-950/40 dark:text-accent-300 dark:hover:bg-accent-900/30"
     >
       {isExporting ? (
         <Loader2 className="h-4 w-4 animate-spin" />

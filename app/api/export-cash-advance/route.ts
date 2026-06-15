@@ -84,13 +84,13 @@ export async function GET(request: Request) {
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
           :root {
-            --primary: #c29d5b;
-            --ink-900: #111827;
-            --ink-700: #374151;
-            --ink-500: #6b7280;
-            --ink-100: #e5e7eb;
+            --primary: #f54e00;
+            --ink-900: #26251e;
+            --ink-700: #3b3a34;
+            --ink-500: #807d72;
+            --ink-100: #e6e5e0;
             --bg: #ffffff;
-            --card-bg: #f9fafb;
+            --card-bg: #fafaf7;
           }
           body { 
             font-family: ${isRtl ? "'Cairo', sans-serif" : "'Inter', sans-serif"};

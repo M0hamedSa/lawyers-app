@@ -36,8 +36,8 @@ export default async function AdminUsersPage({
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-brass-700">{tAdmin("title")}</p>
-        <h1 className="mt-1 text-3xl font-semibold text-ink-900">{tAdmin("manageUsers")}</h1>
+        <p className="text-caption-uppercase uppercase text-accent-700">{tAdmin("title")}</p>
+        <h1 className="mt-1 text-display-md text-ink-800">{tAdmin("manageUsers")}</h1>
       </div>
 
       <UsersManagement 

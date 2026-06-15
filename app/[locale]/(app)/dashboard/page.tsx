@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { Card, CardContent } from "@/components/ui/card";
+import { MetricCard } from "@/components/dashboard/metric-card";
+import { StaggerContainer } from "@/components/ui/animated";
 import { getDashboardData } from "@/lib/supabase/queries";
 import { formatCurrency } from "@/lib/utils";
 import { ExportUserReportButton } from "@/components/dashboard/export-user-report-button";
@@ -20,13 +21,12 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
   return (
     <div className="space-y-5">
-      {/* Header aligned inline on small screens */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-brass-700 dark:text-brass-400 sm:text-sm">
+          <p className="text-caption-uppercase uppercase text-accent-600 dark:text-accent-400">
             {t("title")}
           </p>
-          <h1 className="mt-0.5 text-xl font-bold tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
+          <h1 className="mt-1 text-display-sm sm:text-display-lg text-ink-800 dark:text-ink-100">
             {t("title")}
           </h1>
         </div>
@@ -35,49 +35,14 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         </div>
       </div>
 
-      {/* Grid displays as 2x2 on mobile, adapts to content on desktop */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <StaggerContainer className="grid grid-cols-2 gap-4 sm:gap-5 xl:grid-cols-4">
         <MetricCard tone="neutral" label={t("totalClients")} value={String(data.totalClients)} rawValue={data.totalClients} />
         {data.userRole === "superadmin" && (
           <MetricCard tone="payment" label={t("totalPayments")} value={formatCurrency(data.totalPayments, locale)} rawValue={data.totalPayments} />
         )}
         <MetricCard tone="expense" label={data.userRole === "superadmin" ? t("totalExpenses") : tCommon("myExpenses")} value={formatCurrency(data.totalExpenses, locale)} rawValue={data.totalExpenses} />
         <MetricCard tone="balance" label={data.userRole === "superadmin" ? t("totalBalance") : tCommon("balance")} value={formatCurrency(data.totalBalance, locale)} rawValue={data.totalBalance} />
-      </div>
-
+      </StaggerContainer>
     </div>
-  );
-}
-
-import { cn } from "@/lib/utils";
-
-function MetricCard({ 
-  label, 
-  value,
-  tone,
-  rawValue
-}: { 
-  label: string; 
-  value: string;
-  tone: "neutral" | "payment" | "expense" | "balance";
-  rawValue: number;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-4 sm:p-6">
-        <p className="text-[11px] font-normal text-ink-700 dark:text-ink-300 sm:text-sm truncate">{label}</p>
-        <p 
-          className={cn(
-            "mt-1 sm:mt-2 break-words text-sm font-normal tabular-nums sm:text-2xl",
-            tone === "neutral" && "text-ink-900 dark:text-ink-50",
-            tone === "payment" && "text-green-700 dark:text-green-400",
-            tone === "expense" && "text-red-700 dark:text-red-400",
-            tone === "balance" && "text-ink-900 dark:text-ink-50",
-          )}
-        >
-          {value}
-        </p>
-      </CardContent>
-    </Card>
   );
 }

@@ -63,7 +63,7 @@ export function TransactionSearch({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2 overflow-x-auto">
       {/* Search */}
       <div className="relative min-w-0 flex-1" style={{ minWidth: "160px" }}>
         <div className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-400">
@@ -136,7 +136,7 @@ export function TransactionSearch({
         <button
           onClick={clearFilters}
           title={t("clearFilters")}
-          className="shrink-0 rounded-md p-2 text-ink-400 hover:bg-ink-100 hover:text-ink-700 dark:hover:bg-ink-800 dark:hover:text-ink-200"
+          className="shrink-0 rounded-md p-2 text-ink-400 hover:bg-ink-100 hover:text-ink-600 dark:hover:bg-ink-800 dark:hover:text-ink-200"
         >
           <X className="size-4" />
         </button>

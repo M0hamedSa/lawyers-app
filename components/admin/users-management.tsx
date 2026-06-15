@@ -207,10 +207,10 @@ export function UsersManagement({
                 header: t("fullName"),
                 cell: (u) => (
                   <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-full bg-ink-100 text-ink-700">
+                    <div className="flex size-8 items-center justify-center rounded-full bg-ink-100 text-ink-600">
                       <Users className="size-4" />
                     </div>
-                    <span className="font-medium text-ink-900 dark:text-ink-50">{u.full_name}</span>
+                    <span className="font-medium text-ink-800 dark:text-ink-100">{u.full_name}</span>
                   </div>
                 ),
               },
@@ -218,7 +218,7 @@ export function UsersManagement({
                 key: "role",
                 header: t("role"),
                 cell: (u) => (
-                  <span className="inline-flex rounded-md bg-ink-100 px-2 py-1 text-xs font-semibold text-ink-700">
+                  <span className="inline-flex rounded-md bg-ink-100 px-2 py-1 text-xs font-semibold text-ink-600">
                     {tRoles(u.role)}
                   </span>
                 ),
@@ -227,7 +227,7 @@ export function UsersManagement({
                 key: "clients",
                 header: t("assignedClients"),
                 cell: (u) => (
-                  <span className="text-sm text-ink-700 dark:text-ink-300">
+                  <span className="text-sm text-ink-600 dark:text-ink-300">
                     {u.client_access.length}
                   </span>
                 ),
@@ -235,7 +235,7 @@ export function UsersManagement({
               {
                 key: "actions",
                 header: "",
-                className: "text-right",
+                className: "text-end",
                 cell: (u) => (
                   <ActionButton variant="secondary" onClick={() => openManage(u)}>
                     {t("manageAccess")}
@@ -254,21 +254,21 @@ export function UsersManagement({
       >
         <div className="space-y-6">
           <div className="flex items-center gap-3 border-b border-ink-100 pb-4">
-            <div className="flex size-10 items-center justify-center rounded-full bg-brass-100 text-brass-700">
+            <div className="flex size-10 items-center justify-center rounded-full bg-accent-100 text-accent-700">
               <Users className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-ink-900 dark:text-ink-50">{selectedUser?.full_name}</p>
-              <p className="text-xs text-ink-500">{selectedUser?.role}</p>
+              <p className="text-sm font-semibold text-ink-800 dark:text-ink-100">{selectedUser?.full_name}</p>
+              <p className="text-xs text-ink-400">{selectedUser?.role}</p>
             </div>
           </div>
 
           {currentRole === "superadmin" && (
             <>
               <div className="space-y-2 border-b border-ink-100 pb-4">
-                <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">{t("userRole")}</label>
+                <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">{t("userRole")}</label>
                 {selectedUser?.id === currentUserId && selectedUser?.role === "superadmin" ? (
-                  <p className="text-xs text-brass-700 font-medium">
+                  <p className="text-xs text-accent-700 font-medium">
                     {t("lockoutWarning")}
                   </p>
                 ) : (
@@ -282,8 +282,8 @@ export function UsersManagement({
                         className={cn(
                           "flex min-w-[calc(50%-0.25rem)] flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition sm:min-w-0",
                           selectedUser?.role === r
-                            ? "border-ink-900 bg-ink-900 text-white dark:border-brass-400 dark:bg-brass-500 dark:text-ink-900"
-                            : "border-ink-200 text-ink-700 hover:bg-ink-50 dark:border-ink-600 dark:text-ink-300 dark:hover:bg-ink-800"
+                            ? "border-ink-900 bg-ink-800 text-white dark:border-accent-400 dark:bg-accent-500 dark:text-ink-800"
+                            : "border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-600 dark:text-ink-300 dark:hover:bg-ink-800"
                         )}
                       >
                         {togglingId === `role-${r}` && <Loader2 className="size-3 animate-spin" />}
@@ -294,7 +294,7 @@ export function UsersManagement({
                 )}
               </div>
               <div className="space-y-2 border-b border-ink-100 pb-4">
-                <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">{tCommon("cashAdvance")} ({locale === "ar" ? "ج.م." : "EGP"})</label>
+                <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">{tCommon("cashAdvance")} ({locale === "ar" ? "ج.م." : "EGP"})</label>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -316,8 +316,8 @@ export function UsersManagement({
           )}
 
           <div className="space-y-4">
-            <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">{t("clientAccess")}</label>
-            <p className="text-sm text-ink-700 dark:text-ink-300">
+            <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">{t("clientAccess")}</label>
+            <p className="text-sm text-ink-600 dark:text-ink-300">
               {t("clientAccessDesc")}
             </p>
             <div className="max-h-64 overflow-y-auto rounded-md border border-ink-100 dark:border-ink-700">
@@ -326,7 +326,7 @@ export function UsersManagement({
                   const hasAccess = selectedUser?.client_access.some(a => a.client_id === client.id);
                   return (
                     <div key={client.id} className="flex items-center justify-between p-3 hover:bg-ink-50 dark:hover:bg-ink-800">
-                      <span className="text-sm font-medium text-ink-900 dark:text-ink-100">{client.name}</span>
+                      <span className="text-sm font-medium text-ink-800 dark:text-ink-100">{client.name}</span>
                       <button
                         type="button"
                         disabled={submitting}
@@ -334,8 +334,8 @@ export function UsersManagement({
                         className={cn(
                           "flex items-center gap-2 rounded px-3 py-1 text-xs font-semibold transition",
                           hasAccess
-                            ? "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400"
-                            : "bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400"
+                            ? "bg-error-50 text-error-700 hover:bg-error-100 dark:bg-error-900/20 dark:text-error-400"
+                            : "bg-success-50 text-success-700 hover:bg-success-100 dark:bg-success-900/20 dark:text-success-400"
                         )}
                       >
                         {togglingId === client.id && <Loader2 className="size-3 animate-spin" />}
@@ -360,13 +360,13 @@ export function UsersManagement({
         open={inviteModalOpen}
         onClose={() => setInviteModalOpen(false)}
       >
-        <form onSubmit={handleInvite} className="space-y-4">
-          <p className="text-sm text-ink-700 dark:text-ink-300">
+        <form onSubmit={handleInvite} className="space-y-4 [&_input]:w-full [&_select]:w-full">
+          <p className="text-sm text-ink-600 dark:text-ink-300">
             {t("inviteDesc")}
           </p>
 
           {inviteError && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+            <div className="rounded-md bg-error-50 p-3 text-sm text-error-700 dark:bg-error-900/20 dark:text-error-400">
               {inviteError}
             </div>
           )}
@@ -393,7 +393,7 @@ export function UsersManagement({
         </Field>
 
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">{t("initialRole")}</label>
+          <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">{t("initialRole")}</label>
           <div className="flex gap-2">
             {(["user", "admin", "superadmin"] as UserRole[]).map((r) => (
               <button
@@ -403,8 +403,8 @@ export function UsersManagement({
                 className={cn(
                   "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition",
                   inviteForm.role === r
-                    ? "border-ink-900 bg-ink-900 text-white"
-                    : "border-ink-200 text-ink-700 hover:bg-ink-50"
+                    ? "border-ink-900 bg-ink-800 text-white"
+                    : "border-ink-200 text-ink-600 hover:bg-ink-50"
                 )}
               >
                 {tRoles(r)}

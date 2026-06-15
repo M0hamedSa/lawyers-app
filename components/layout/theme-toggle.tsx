@@ -38,7 +38,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       type="button"
       onClick={toggle}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-md border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 transition hover:bg-ink-50 hover:text-ink-900 dark:border-ink-600 dark:text-ink-200 dark:hover:bg-ink-800 dark:hover:text-white",
+        "flex w-full items-center justify-between gap-2 rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-nav-link text-ink-600 shadow-subtle transition-colors hover:bg-ink-50 hover:text-ink-800 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300 dark:hover:bg-ink-800 dark:hover:text-ink-100",
         className,
       )}
       aria-pressed={dark}
@@ -50,15 +50,15 @@ export function ThemeToggle({ className }: { className?: string }) {
       </span>
       <span
         className={cn(
-          "relative inline-flex h-6 w-11 shrink-0 rounded-full border border-ink-200 bg-ink-100 transition dark:border-ink-500 dark:bg-ink-700",
-          dark && "border-brass-500/40 bg-brass-500/30",
+          "relative inline-flex h-5 w-9 shrink-0 rounded-full border border-ink-200 bg-ink-100 transition-colors dark:border-ink-600 dark:bg-ink-700",
+          dark && "border-accent-500/50 bg-accent-500/20",
         )}
         aria-hidden
       >
         <span
           className={cn(
-            "absolute top-0.5 size-4 rounded-full bg-white shadow transition dark:bg-ink-200",
-            dark ? "end-0.5" : "start-0.5",
+            "absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-all duration-200 dark:bg-ink-200",
+            dark ? "end-[2px] left-auto" : "start-[2px]",
           )}
         />
       </span>

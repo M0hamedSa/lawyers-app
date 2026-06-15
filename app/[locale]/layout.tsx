@@ -49,8 +49,8 @@ export async function generateMetadata({
       creator: "@TrueLegal",
     },
     icons: {
-      icon: "/icon.png",
-      apple: "/icon.png",
+      icon: "/logo.png",
+      apple: "/logo.png",
     },
   };
 }

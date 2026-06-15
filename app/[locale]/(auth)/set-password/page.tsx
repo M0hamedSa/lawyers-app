@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, inputClassName } from "@/components/ui/field";
@@ -97,26 +98,26 @@ export default function SetPasswordPage() {
 
   if (phase === "checking") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 dark:bg-[#121210]">
-        <Loader2 className="size-10 animate-spin text-brass-600" aria-hidden />
+      <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 dark:bg-ink-950">
+        <Loader2 className="size-10 animate-spin text-accent-500" aria-hidden />
       </div>
     );
   }
 
   if (phase === "invalid") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-[#121210]">
+      <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-ink-950">
         <div className="w-full max-w-md space-y-6 text-center">
           <div className="flex flex-col items-center">
-            <div className="flex size-12 items-center justify-center shrink-0">
-              <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
-            </div>
-            <h1 className="mt-6 text-xl font-semibold text-ink-900 dark:text-ink-50">{t("invalidTitle")}</h1>
-            <p className="mt-2 text-sm text-ink-700 dark:text-ink-300">{error ?? t("invalidLink")}</p>
+          <div className="flex size-12 items-center justify-center shrink-0">
+            <Image src="/logo.png" alt="Logo" width={48} height={48} className="w-full h-full rounded-full object-cover" />
+          </div>
+          <h1 className="mt-6 text-display-sm text-ink-800 dark:text-ink-100">{t("invalidTitle")}</h1>
+            <p className="mt-2 text-body-md text-ink-600 dark:text-ink-300">{error ?? t("invalidLink")}</p>
           </div>
           <Link
             href="/login"
-            className="inline-block text-sm font-medium text-brass-700 hover:text-brass-800 dark:text-brass-400 dark:hover:text-brass-300"
+            className="inline-block text-body-md font-medium text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300"
           >
             {t("goToLogin")}
           </Link>
@@ -129,23 +130,23 @@ export default function SetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-[#121210]">
+    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-ink-950">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center">
           <div className="flex size-12 items-center justify-center shrink-0">
-            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+            <Image src="/logo.png" alt="Logo" width={48} height={48} className="w-full h-full rounded-full object-cover" />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-ink-900 dark:text-ink-50">
+          <h2 className="mt-6 text-center text-display-lg text-ink-800 dark:text-ink-100">
             {t("title")}
           </h2>
-          <p className="mt-2 text-center text-sm text-ink-700 dark:text-ink-300">{t("subtitle")}</p>
+          <p className="mt-2 text-center text-body-md text-ink-600 dark:text-ink-300">{t("subtitle")}</p>
         </div>
 
         <Card>
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+                <div className="rounded-md border border-error-200 bg-error-50 p-3 text-body-sm text-error-700 dark:border-error-900/50 dark:bg-error-950/40 dark:text-error-200">
                   {error}
                 </div>
               )}

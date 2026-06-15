@@ -7,7 +7,7 @@ import { ArrowLeft, FileText, Plus, Loader2 } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
-import { Field, inputClassName, textareaClassName } from "@/components/ui/field";
+import { Field, inputClassName } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -20,6 +20,7 @@ import type {
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { encodeId } from "@/lib/id-utils";
 import { ExportTransactionsButton } from "@/components/admin/export-transactions-button";
+import { StaggerContainer, FadeInBox, CountUpNumber } from "@/components/ui/animated";
 
 type Tab = "finance" | "files";
 
@@ -72,9 +73,12 @@ export function CaseDetailsClient({
   const locale = useLocale();
 
   const userRole = currentUser?.role || null;
-  const filteredInitialTransactions = userRole === "superadmin"
-    ? initialTransactions
-    : initialTransactions.filter(t => t.created_by === currentUser?.id && t.type === "expense");
+  const filteredInitialTransactions = useMemo(
+    () => userRole === "superadmin"
+      ? initialTransactions
+      : initialTransactions.filter(t => t.created_by === currentUser?.id && t.type === "expense"),
+    [initialTransactions, userRole, currentUser?.id]
+  );
 
   const [activeTab, setActiveTab] = useState<Tab>("finance");
   const [transactions, setTransactions] = useState<TransactionWithUser[]>(filteredInitialTransactions);
@@ -85,29 +89,14 @@ export function CaseDetailsClient({
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [caseStatus, setCaseStatus] = useState(caseData.status);
-  const [statusSaving, setStatusSaving] = useState(false);
-
+  const [caseStatus] = useState(caseData.status);
   // Lock all transactions if the case is closed OR the client is inactive
   const isLocked = caseStatus === "closed" || client.status === "inactive";
-
-  async function updateCaseStatus(newStatus: string) {
-    setStatusSaving(true);
-    const { error: updateError } = await supabase
-      .from("cases")
-      .update({ status: newStatus })
-      .eq("id", caseData.id);
-    setStatusSaving(false);
-    if (!updateError) {
-      setCaseStatus(newStatus);
-      router.refresh();
-    }
-  }
 
   // Sync state if server re-fetches
   useEffect(() => {
     setTransactions(filteredInitialTransactions);
-  }, [initialTransactions]);
+  }, [filteredInitialTransactions]);
 
   useEffect(() => {
     const channel = supabase
@@ -164,7 +153,7 @@ export function CaseDetailsClient({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [caseData.id, router, supabase, userRole, currentUser?.id]);
+  }, [caseData.id, router, supabase, userRole, currentUser]);
 
   const totals = transactions.reduce(
     (acc, transaction) => {
@@ -248,28 +237,29 @@ export function CaseDetailsClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+      <FadeInBox>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <Link
             href={`/clients/${encodeId(client.id)}`}
-            className="inline-flex items-center gap-2 text-sm font-medium text-ink-700 hover:text-brass-700 dark:text-ink-300 dark:hover:text-brass-400"
+            className="inline-flex items-center gap-2 text-sm font-medium text-ink-600 hover:text-accent-700 dark:text-ink-300 dark:hover:text-accent-400"
           >
             <ArrowLeft className="size-4 shrink-0 rtl:rotate-180" aria-hidden />
             {client.name}
           </Link>
-          <h1 className="mt-3 break-words text-2xl font-semibold tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
+          <h1 className="mt-3 break-words text-display-sm sm:text-display-md text-ink-800 dark:text-ink-100 sm:text-3xl">
             {caseData.title}
           </h1>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-700 dark:text-ink-300">
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-600 dark:text-ink-300">
             <span className={cn(
               "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
               caseStatus === "open"
-                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                ? "bg-success-50 text-success-700 dark:bg-success-950/40 dark:text-success-400"
                 : "bg-ink-100 text-ink-800 dark:bg-ink-800 dark:text-ink-300",
             )}>
               {tCases("status." + caseStatus)}
             </span>
-            {caseData.description && <span className="text-ink-500">· {caseData.description}</span>}
+            {caseData.description && <span className="text-ink-400">· {caseData.description}</span>}
           </p>
         </div>
         <div className="flex w-full shrink-0 flex-col-reverse gap-2 sm:w-auto sm:flex-row-reverse">
@@ -288,8 +278,10 @@ export function CaseDetailsClient({
           )}
         </div>
       </div>
+      </FadeInBox>
 
       {isLocked && (
+        <FadeInBox delay={0.1}>
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-300">
           <span className="text-base">🔒</span>
           <span>
@@ -299,24 +291,27 @@ export function CaseDetailsClient({
             {userRole === "superadmin" && " " + (tCases("lockedHint") || "You can reopen it by editing the case or client status.")}
           </span>
         </div>
+      </FadeInBox>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {userRole === "superadmin" && (
-          <FinanceMetric label={t("totalPayments") || "Total Payments"} value={formatCurrency(totals.payments, locale)} rawValue={totals.payments} tone="payment" />
+          <FinanceMetric label={t("totalPayments") || "Total Payments"} value={formatCurrency(totals.payments, locale)} rawValue={totals.payments} tone="payment" locale={locale} />
         )}
-        <FinanceMetric label={userRole === "superadmin" ? t("totalExpenses") : tCommon("myExpenses")} value={formatCurrency(displayExpenses, locale)} rawValue={displayExpenses} tone="expense" />
-        <FinanceMetric label={t("currentBalance")} value={formatCurrency(balance, locale)} rawValue={balance} tone="balance" />
+        <FinanceMetric label={userRole === "superadmin" ? t("totalExpenses") : tCommon("myExpenses")} value={formatCurrency(displayExpenses, locale)} rawValue={displayExpenses} tone="expense" locale={locale} />
+        <FinanceMetric label={t("currentBalance")} value={formatCurrency(balance, locale)} rawValue={balance} tone="balance" locale={locale} />
         {userRole === "superadmin" && client.profit_type === "per_case" && caseData.profit_amount ? (
           <FinanceMetric
             label={t("caseProfit") || "Case Profit"}
             value={formatCurrency(caseData.profit_amount, locale)}
             rawValue={caseData.profit_amount}
             tone="payment"
+            locale={locale}
           />
         ) : null}
-      </div>
+      </StaggerContainer>
 
+      <FadeInBox delay={0.15}>
       <div className="border-b border-ink-100 dark:border-ink-700">
         <div className="-mx-1 flex gap-1 overflow-x-auto overflow-y-hidden px-1 [-webkit-overflow-scrolling:touch] sm:gap-2">
           {([
@@ -328,10 +323,10 @@ export function CaseDetailsClient({
               type="button"
               onClick={() => setActiveTab(tab)}
               className={cn(
-                "shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-semibold transition sm:px-4 sm:py-3",
+                "shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-title-sm transition sm:px-4 sm:py-3",
                 activeTab === tab
-                  ? "border-brass-500 text-ink-900 dark:border-brass-400 dark:text-ink-50"
-                  : "border-transparent text-ink-700 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100",
+                  ? "border-accent-500 text-ink-800 dark:border-accent-400 dark:text-ink-50"
+                  : "border-transparent text-ink-600 hover:text-ink-800 dark:text-ink-400 dark:hover:text-ink-100",
               )}
             >
               {label}
@@ -339,24 +334,33 @@ export function CaseDetailsClient({
           ))}
         </div>
       </div>
+      </FadeInBox>
 
       {error ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+        <FadeInBox delay={0.2}>
+        <div className="rounded-md border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-800 dark:border-error-900/50 dark:bg-error-950/40 dark:text-error-200">
           {error}
         </div>
+        </FadeInBox>
       ) : null}
 
       {activeTab === "finance" ? (
+        <FadeInBox delay={0.2}>
         <FinanceTab transactions={transactions} userRole={userRole} />
+        </FadeInBox>
       ) : null}
-      {activeTab === "files" ? <FilesTab /> : null}
+      {activeTab === "files" ? (
+        <FadeInBox delay={0.2}>
+        <FilesTab />
+        </FadeInBox>
+      ) : null}
 
       <Modal title={t("addTransaction")} open={modalOpen} onClose={() => setModalOpen(false)}>
-        <form onSubmit={saveTransaction} className="space-y-4">
+        <form onSubmit={saveTransaction} className="space-y-4 [&_input]:w-full [&_select]:w-full">
 
           {userRole === "superadmin" && (
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">
+              <label className="text-title-sm text-ink-800 dark:text-ink-100">
                 {tTrans("columns.type")}
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -364,8 +368,8 @@ export function CaseDetailsClient({
                   className={cn(
                     "flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition",
                     form.type === "payment"
-                      ? "border-green-600 bg-green-50 text-green-700 dark:border-green-500/50 dark:bg-green-500/10 dark:text-green-400"
-                      : "border-ink-200 text-ink-700 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800",
+                      ? "border-success-500 bg-success-50 text-success-700 dark:border-success-500/50 dark:bg-success-500/10 dark:text-success-400"
+                      : "border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800",
                   )}
                 >
                   <input
@@ -382,8 +386,8 @@ export function CaseDetailsClient({
                   className={cn(
                     "flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition",
                     form.type === "expense"
-                      ? "border-red-600 bg-red-50 text-red-700 dark:border-red-500/50 dark:bg-red-500/10 dark:text-red-400"
-                      : "border-ink-200 text-ink-700 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800",
+                      ? "border-error-500 bg-error-50 text-error-700 dark:border-error-500/50 dark:bg-error-500/10 dark:text-error-400"
+                      : "border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800",
                   )}
                 >
                   <input
@@ -470,23 +474,26 @@ export function CaseDetailsClient({
   );
 }
 
-function FinanceMetric({ label, value, tone, rawValue }: { label: string; value: string; tone: "payment" | "expense" | "balance"; rawValue: number }) {
+function FinanceMetric({ label, value, tone, rawValue, locale = "en-US" }: { label: string; value: string; tone: "payment" | "expense" | "balance"; rawValue?: number; locale?: string }) {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4 sm:p-6">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-ink-700 dark:text-ink-300 sm:text-xs">
+        <p className="text-caption-uppercase uppercase text-ink-600 dark:text-ink-300">
           {label}
         </p>
         <p
           className={cn(
-            "mt-1 sm:mt-2 truncate text-xl font-bold tabular-nums sm:text-2xl",
-            tone === "payment" && "text-green-700 dark:text-green-400",
-            tone === "expense" && "text-red-700 dark:text-red-400",
-            tone === "expense" && "text-red-700 dark:text-red-400",
-            tone === "balance" && "text-ink-900 dark:text-ink-50",
+            "mt-1 sm:mt-2 truncate text-display-sm tabular-nums sm:text-2xl",
+            tone === "payment" && "text-success-700 dark:text-success-400",
+            tone === "expense" && "text-error-700 dark:text-error-400",
+            tone === "balance" && "text-ink-800 dark:text-ink-100",
           )}
         >
-          {value}
+          {rawValue !== undefined ? (
+            <CountUpNumber value={rawValue} formatter={(v) => formatCurrency(v, locale)} />
+          ) : (
+            value
+          )}
         </p>
       </CardContent>
     </Card>
@@ -500,7 +507,7 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
 
   return (
     <Card>
-      <CardHeader className="border-b border-ink-100 bg-ink-50/50 py-3 dark:border-ink-800 dark:bg-ink-950/20 sm:py-4">
+      <CardHeader className="border-b border-ink-100 py-3 dark:border-ink-800 dark:bg-ink-950/20 sm:py-4">
         <CardTitle className="text-sm sm:text-base">{t("financialLedger")}</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
@@ -512,7 +519,7 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
             {
               key: "date",
               header: tTrans("columns.date"),
-              cell: (item) => <span className="tabular-nums text-ink-600 dark:text-ink-400">{formatDate(item.date, locale)}</span>,
+              cell: (item) => <span className="tabular-nums text-ink-500 dark:text-ink-400">{formatDate(item.date, locale)}</span>,
             },
             {
               key: "type",
@@ -522,8 +529,8 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
                   className={cn(
                     "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider sm:text-xs",
                     item.type === "payment"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+                      ? "bg-success-50 text-success-700 dark:bg-success-950/40 dark:text-success-400"
+                      : "bg-error-100 text-error-800 dark:bg-error-900/30 dark:text-error-400",
                   )}
                 >
                   {item.type === "payment" ? tTrans("vouchers." + item.voucher_type) : tTrans("vouchers.other")}
@@ -533,7 +540,7 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
             {
               key: "description",
               header: tTrans("columns.description"),
-              cell: (item) => <span className="font-medium text-ink-900 dark:text-ink-50">{item.description}</span>,
+              cell: (item) => <span className="font-medium text-ink-800 dark:text-ink-100">{item.description}</span>,
             },
             {
               key: "amount",
@@ -542,7 +549,7 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
                 <span
                   className={cn(
                     "font-semibold tabular-nums",
-                    item.type === "payment" ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400",
+                    item.type === "payment" ? "text-success-700 dark:text-success-400" : "text-error-700 dark:text-error-400",
                   )}
                 >
                   {item.type === "expense" ? "-" : "+"}
@@ -556,7 +563,7 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
                     key: "created_by",
                     header: tTrans("columns.createdBy"),
                     cell: (item: TransactionWithUser) => (
-                      <span className="text-ink-600 dark:text-ink-400">
+                      <span className="text-ink-500 dark:text-ink-400">
                         {item.users?.full_name || "-"}
                       </span>
                     ),
@@ -576,10 +583,10 @@ function FilesTab() {
   return (
     <Card>
       <CardContent className="flex flex-col items-center justify-center p-8 text-center sm:p-12">
-        <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-brass-100 text-brass-700 dark:bg-brass-900/30 dark:text-brass-400">
+        <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
           <FileText className="size-6" />
         </div>
-        <p className="text-sm text-ink-600 dark:text-ink-400">{t("fileStorageText")}</p>
+        <p className="text-sm text-ink-500 dark:text-ink-400">{t("fileStorageText")}</p>
       </CardContent>
     </Card>
   );

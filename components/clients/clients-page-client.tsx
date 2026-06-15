@@ -174,10 +174,10 @@ export function ClientsPageClient({
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-semibold uppercase tracking-wide text-brass-700 dark:text-brass-400">
+          <p className="text-caption-uppercase uppercase text-accent-700 dark:text-accent-400">
             {t("title")}
           </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
+          <h1 className="mt-1 text-display-sm sm:text-display-md text-ink-800 dark:text-ink-100">
             {t("heading")}
           </h1>
         </div>
@@ -190,7 +190,7 @@ export function ClientsPageClient({
       </div>
 
       {error ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+        <div className="rounded-md border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-800 dark:border-error-900/50 dark:bg-error-950/40 dark:text-error-200">
           {error}
         </div>
       ) : null}
@@ -209,17 +209,17 @@ export function ClientsPageClient({
                   <div className="flex flex-col gap-1">
                     <Link
                       href={`/clients/${encodeId(client.id)}` as Route}
-                      className="font-semibold text-ink-900 underline-offset-2 hover:text-brass-700 hover:underline dark:text-ink-50 dark:hover:text-brass-400"
+                      className="font-semibold text-ink-800 underline-offset-2 hover:text-accent-700 hover:underline dark:text-ink-100 dark:hover:text-accent-400"
                     >
                       {client.name}
                     </Link>
                     <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       {client.status === "active" ? (
-                        <span className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <span className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-success-50 text-success-700 dark:bg-success-900/30 dark:text-success-400">
                           {t("form.active")}
                         </span>
                       ) : (
-                        <span className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                        <span className="inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-400">
                           {t("form.inactive")}
                         </span>
                       )}
@@ -227,8 +227,8 @@ export function ClientsPageClient({
                         <span
                           className={
                             client.profit_type === "monthly"
-                              ? "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                              : "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                              ? "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+                              : "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400"
                           }
                         >
                           {client.profit_type === "monthly" ? t("form.monthly") : t("form.perCase")}
@@ -242,7 +242,7 @@ export function ClientsPageClient({
                 key: "contact",
                 header: t("columns.contact"),
                 cell: (client) => (
-                  <div className="space-y-1 text-ink-700 dark:text-ink-300">
+                  <div className="space-y-1 text-ink-600 dark:text-ink-300">
                     <p>{client.phone || tCommon("noPhone")}</p>
                     <p>{client.email || tCommon("noEmail")}</p>
                   </div>
@@ -254,7 +254,7 @@ export function ClientsPageClient({
                       key: "payments",
                       header: t("columns.payments"),
                       cell: (client: ClientWithSummary) => (
-                        <span className="font-medium tabular-nums text-green-700 dark:text-green-400">
+                        <span className="font-medium tabular-nums text-success-700 dark:text-success-400">
                           {formatCurrency(client.total_payments, locale)}
                         </span>
                       ),
@@ -263,7 +263,7 @@ export function ClientsPageClient({
                       key: "expenses",
                       header: t("columns.expenses"),
                       cell: (client: ClientWithSummary) => (
-                        <span className="font-medium tabular-nums text-red-700 dark:text-red-400">
+                        <span className="font-medium tabular-nums text-error-700 dark:text-error-400">
                           {formatCurrency(client.total_expenses, locale)}
                         </span>
                       ),
@@ -272,7 +272,7 @@ export function ClientsPageClient({
                       key: "balance",
                       header: t("columns.balance"),
                       cell: (client: ClientWithSummary) => (
-                        <span className="font-semibold tabular-nums text-ink-900 dark:text-ink-50">
+                        <span className="font-semibold tabular-nums text-ink-800 dark:text-ink-100">
                           {formatCurrency(client.balance, locale)}
                         </span>
                       ),
@@ -283,7 +283,7 @@ export function ClientsPageClient({
                       key: "expenses",
                       header: tCommon("myExpenses"),
                       cell: (client: ClientWithSummary) => (
-                        <span className="font-medium tabular-nums text-red-700 dark:text-red-400">
+                        <span className="font-medium tabular-nums text-error-700 dark:text-error-400">
                           {formatCurrency(client.total_expenses, locale)}
                         </span>
                       ),
@@ -304,7 +304,7 @@ export function ClientsPageClient({
                       <button
                         type="button"
                         onClick={() => openEdit(client)}
-                        className="inline-flex size-9 items-center justify-center rounded-md border border-ink-100 hover:bg-ink-50 dark:border-ink-600 dark:hover:bg-ink-800"
+                        className="inline-flex size-9 items-center justify-center rounded-md border border-ink-200 hover:bg-ink-50 dark:border-ink-600 dark:hover:bg-ink-800"
                         aria-label={tCommon("edit")}
                       >
                         <Edit2 className="size-4" aria-hidden />
@@ -314,7 +314,7 @@ export function ClientsPageClient({
                       <button
                         type="button"
                         onClick={() => openDeleteConfirm(client.id)}
-                        className="inline-flex size-9 items-center justify-center rounded-md border border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/40"
+                        className="inline-flex size-9 items-center justify-center rounded-md border border-error-200 text-error-700 hover:bg-error-50 dark:border-error-900/50 dark:text-error-300 dark:hover:bg-error-950/40"
                         aria-label={tCommon("delete")}
                       >
                         <Trash2 className="size-4" aria-hidden />
@@ -329,7 +329,7 @@ export function ClientsPageClient({
       </Card>
 
       <Modal title={form.id ? t("editClient") : t("newClient")} open={modalOpen} onClose={() => setModalOpen(false)}>
-        <form onSubmit={saveClient} className="space-y-4">
+        <form onSubmit={saveClient} className="space-y-4 [&_input]:w-full [&_select]:w-full">
           <Field label={t("form.name")}>
             <input
               required
@@ -435,7 +435,7 @@ export function ClientsPageClient({
 
       <Modal title={t("deleteClient") || "Delete Client"} open={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
         <div className="space-y-6">
-          <p className="text-ink-700 dark:text-ink-300">
+          <p className="text-ink-600 dark:text-ink-300">
             {t("deleteConfirm") || "Are you sure you want to delete this client? This action cannot be undone and will delete all associated transactions."}
           </p>
           <div className="flex justify-end gap-3">
@@ -445,7 +445,7 @@ export function ClientsPageClient({
             <ActionButton 
               onClick={deleteClient} 
               disabled={submitting}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-error-600 hover:bg-error-700 text-white"
             >
               {submitting ? (
                 <>

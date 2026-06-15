@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { useLocale, useTranslations } from "next-intl";
 import { Users, Loader2, Download } from "lucide-react";
 import { inputClassName } from "@/components/ui/field";
+import { CountUpNumber } from "@/components/ui/animated";
 
 type UserFinancials = {
   id: string;
@@ -78,34 +79,34 @@ export function CashAdvanceManagement({
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4 sm:p-6">
-            <p className="text-sm font-normal text-ink-700 dark:text-ink-300">{t("totalAdvances")}</p>
-            <h2 className="mt-2 text-xl font-normal tabular-nums text-green-700 dark:text-green-400 sm:text-2xl">
-              {totalAdvances.toLocaleString()} {locale === "ar" ? "ج.م." : "EGP"}
+            <p className="text-body-md text-ink-600 dark:text-ink-300">{t("totalAdvances")}</p>
+            <h2 className="mt-2 text-xl font-normal tabular-nums text-success-700 dark:text-success-400 sm:text-2xl">
+              <CountUpNumber value={totalAdvances} formatter={(v) => `${v.toLocaleString()} ${locale === "ar" ? "ج.م." : "EGP"}`} />
             </h2>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-4 sm:p-6">
-            <p className="text-sm font-normal text-ink-700 dark:text-ink-300">{t("totalUserExpenses")}</p>
-            <h2 className="mt-2 text-xl font-normal tabular-nums text-red-700 dark:text-red-400 sm:text-2xl">
-              {totalExpenses.toLocaleString()} {locale === "ar" ? "ج.م." : "EGP"}
+            <p className="text-body-md text-ink-600 dark:text-ink-300">{t("totalUserExpenses")}</p>
+            <h2 className="mt-2 text-xl font-normal tabular-nums text-error-700 dark:text-error-400 sm:text-2xl">
+              <CountUpNumber value={totalExpenses} formatter={(v) => `${v.toLocaleString()} ${locale === "ar" ? "ج.م." : "EGP"}`} />
             </h2>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-4 sm:p-6">
-            <p className="text-sm font-normal text-ink-700 dark:text-ink-300">{t("netBalance")}</p>
-            <h2 className="mt-2 text-xl font-normal tabular-nums text-ink-900 dark:text-ink-50 sm:text-2xl">
-              {totalBalance.toLocaleString()} {locale === "ar" ? "ج.م." : "EGP"}
+            <p className="text-body-md text-ink-600 dark:text-ink-300">{t("netBalance")}</p>
+            <h2 className="mt-2 text-xl font-normal tabular-nums text-ink-800 dark:text-ink-100 sm:text-2xl">
+              <CountUpNumber value={totalBalance} formatter={(v) => `${v.toLocaleString()} ${locale === "ar" ? "ج.م." : "EGP"}`} />
             </h2>
           </CardContent>
         </Card>
       </div>
 
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold text-ink-900 dark:text-ink-50">{t("teamMembers")}</h3>
+        <h3 className="text-display-sm text-ink-800 dark:text-ink-100">{t("teamMembers")}</h3>
         <ActionButton onClick={handleExport} variant="secondary">
           <Download className="size-4 mr-2 rtl:mr-0 rtl:ml-2" />
           {t("reportTitle")}
@@ -124,10 +125,10 @@ export function CashAdvanceManagement({
                 header: t("userName"),
                 cell: (u) => (
                   <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-full bg-ink-100 text-ink-700">
+                    <div className="flex size-8 items-center justify-center rounded-full bg-ink-100 text-ink-600">
                       <Users className="size-4" />
                     </div>
-                    <span className="font-medium text-ink-900 dark:text-ink-50">{u.full_name}</span>
+                    <span className="font-medium text-ink-800 dark:text-ink-100">{u.full_name}</span>
                   </div>
                 ),
               },
@@ -135,7 +136,7 @@ export function CashAdvanceManagement({
                 key: "role",
                 header: t("role"),
                 cell: (u) => (
-                  <span className="inline-flex rounded-md bg-ink-100 px-2 py-1 text-xs font-semibold text-ink-700">
+                  <span className="inline-flex rounded-md bg-ink-100 px-2 py-1 text-xs font-semibold text-ink-600">
                     {tRoles(u.role)}
                   </span>
                 ),
@@ -144,8 +145,8 @@ export function CashAdvanceManagement({
                 key: "cash_advance",
                 header: t("currentAdvance"),
                 cell: (u) => (
-                  <span className="font-medium text-brass-700 dark:text-brass-400">
-                    {u.cash_advance.toLocaleString()}
+                  <span className="font-medium text-accent-700 dark:text-accent-400">
+                    <CountUpNumber value={u.cash_advance} />
                   </span>
                 ),
               },
@@ -153,8 +154,8 @@ export function CashAdvanceManagement({
                 key: "total_expenses",
                 header: t("totalExpenses"),
                 cell: (u) => (
-                  <span className="text-red-600 dark:text-red-400">
-                    {u.total_expenses.toLocaleString()}
+                  <span className="text-error-600 dark:text-error-400">
+                    <CountUpNumber value={u.total_expenses} />
                   </span>
                 ),
               },
@@ -162,15 +163,15 @@ export function CashAdvanceManagement({
                 key: "balance",
                 header: t("currentBalance"),
                 cell: (u) => (
-                  <span className="font-semibold tabular-nums text-ink-900 dark:text-ink-50">
-                    {u.balance.toLocaleString()}
+                  <span className="font-semibold tabular-nums text-ink-800 dark:text-ink-100">
+                    <CountUpNumber value={u.balance} />
                   </span>
                 ),
               },
               {
                 key: "actions",
                 header: "",
-                className: "text-right",
+                className: "text-end",
                 cell: (u) => (
                   <ActionButton variant="secondary" onClick={() => openEdit(u)}>
                     {t("editAdvance")}
@@ -189,17 +190,17 @@ export function CashAdvanceManagement({
       >
         <div className="space-y-6">
           <div className="flex items-center gap-3 border-b border-ink-100 pb-4">
-            <div className="flex size-10 items-center justify-center rounded-full bg-brass-100 text-brass-700">
+            <div className="flex size-10 items-center justify-center rounded-full bg-accent-100 text-accent-700">
               <Users className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-ink-900 dark:text-ink-50">{selectedUser?.full_name}</p>
-              <p className="text-xs text-ink-500">{selectedUser?.role && tRoles(selectedUser.role)}</p>
+              <p className="text-sm font-semibold text-ink-800 dark:text-ink-100">{selectedUser?.full_name}</p>
+              <p className="text-xs text-ink-400">{selectedUser?.role && tRoles(selectedUser.role)}</p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-ink-900 dark:text-ink-50">
+            <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">
               {t("newAmount")} ({locale === "ar" ? "ج.م." : "EGP"})
             </label>
             <div className="flex gap-2">

@@ -17,7 +17,7 @@ export function LanguageSwitcher() {
   return (
     <button
       onClick={toggleLocale}
-      className="flex w-full items-center justify-center gap-2 rounded-md border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 transition hover:bg-ink-50 hover:text-ink-900 dark:border-ink-600 dark:text-ink-200 dark:hover:bg-ink-800 dark:hover:text-white"
+      className="flex w-full items-center justify-center gap-2 rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-nav-link text-ink-600 shadow-subtle transition-colors hover:bg-ink-50 hover:text-ink-800 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300 dark:hover:bg-ink-800 dark:hover:text-ink-100"
     >
       <Globe className="size-4" aria-hidden />
       {locale === "en" ? "عربي" : "English"}

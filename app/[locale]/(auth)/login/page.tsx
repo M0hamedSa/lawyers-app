@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { Loader2 } from "lucide-react";
+import Image from "next/image";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, inputClassName } from "@/components/ui/field";
@@ -33,16 +34,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-[#121210]">
+    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-ink-950">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center">
           <div className="flex size-12 items-center justify-center shrink-0">
-            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+            <Image src="/logo.png" alt="Logo" width={48} height={48} className="w-full h-full rounded-full object-cover" />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-ink-900 dark:text-ink-50">
+          <h2 className="mt-6 text-center text-display-lg text-ink-800 dark:text-ink-100">
             {t("title")}
           </h2>
-          <p className="mt-2 text-center text-sm text-ink-700 dark:text-ink-300">
+          <p className="mt-2 text-center text-body-md text-ink-600 dark:text-ink-300">
             {t("subtitle")}
           </p>
         </div>
@@ -51,7 +52,7 @@ export default function LoginPage() {
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                <div className="rounded-md border border-error-200 bg-error-50 p-3 text-body-sm text-error-700">
                   {error}
                 </div>
               )}
