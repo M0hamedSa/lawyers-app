@@ -20,6 +20,9 @@ export async function GET(request: Request) {
     const clientId = searchParams.get('client_id') || '';
     const caseId = searchParams.get('case_id') || '';
     const locale = searchParams.get('locale') || 'en';
+    if (!['en', 'ar'].includes(locale)) {
+      return new NextResponse('Invalid locale', { status: 400 });
+    }
 
     // Load translations
     const messagesPath = path.join(process.cwd(), 'messages', `${locale}.json`);
@@ -36,6 +39,9 @@ export async function GET(request: Request) {
       }
       return (val as string) || key;
     };
+
+    const escapeHtml = (s: string): string =>
+      s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 
     const supabase = await createClient();
     let dbQuery = supabase
@@ -336,10 +342,10 @@ export async function GET(request: Request) {
               <tr>
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
                 <td>${new Date(t_row.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                <td>${t_row.clients?.name || ''}</td>
-                ${!caseId ? `<td>${t_row.cases?.title || '-'}</td>` : ''}
+                <td>${escapeHtml(t_row.clients?.name || '')}</td>
+                ${!caseId ? `<td>${escapeHtml(t_row.cases?.title || '-')}</td>` : ''}
                 <td>${t(t_row.type === 'payment' ? 'Common.payment' : 'Common.expense')}</td>
-                <td>${t_row.description}</td>
+                <td>${escapeHtml(t_row.description)}</td>
                 <td class="amount-cell ${t_row.type === 'payment' ? 'payment' : 'expense'}">
                   ${t_row.type === 'payment' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
                 </td>
@@ -433,6 +439,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error generating PDF:', error);
-    return new NextResponse('Error generating PDF: ' + (error as Error).message, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    return new NextResponse('Internal server error: ' + msg, { status: 500 });
   }
 }

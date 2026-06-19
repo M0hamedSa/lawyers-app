@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef, useState, useLayoutEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 
 type TopClientData = {
@@ -11,29 +10,9 @@ type TopClientData = {
   expenses: number;
 };
 
-function useSize(ref: React.RefObject<HTMLElement | null>) {
-  const [size, setSize] = useState({ width: 300, height: 200 });
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      if (width > 0 && height > 0) setSize({ width, height });
-    });
-    ro.observe(el);
-    const rect = el.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) setSize({ width: rect.width, height: rect.height });
-    return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return size;
-}
-
 export function TopClientsChart({ data, locale }: { data: TopClientData[]; locale: string }) {
   const t = useTranslations("Charts");
   const isRTL = locale === "ar";
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const { width, height } = useSize(wrapperRef);
 
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) => {
     if (active && payload && payload.length) {
@@ -58,14 +37,16 @@ export function TopClientsChart({ data, locale }: { data: TopClientData[]; local
   }
 
   return (
-    <div ref={wrapperRef} className="h-[250px] w-full">
-      <BarChart width={width} height={height} data={data} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} horizontal={true} stroke="var(--ink-200)" opacity={0.5} />
-        <XAxis dataKey="name" reversed={isRTL} axisLine={false} tickLine={false} tick={{ fill: 'var(--ink-500)', fontSize: 12 }} interval="preserveStartEnd" />
-        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--ink-500)', fontSize: 12 }} tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value} orientation={isRTL ? 'right' : 'left'} width={50} />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-        <Bar dataKey="payments" name={t("payments")} fill="#f54e00" barSize={32} radius={[4, 4, 0, 0]} />
-      </BarChart>
+    <div className="h-[250px] w-full min-w-0">
+      <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={200}>
+        <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} horizontal={true} stroke="var(--ink-200)" opacity={0.5} />
+          <XAxis dataKey="name" reversed={isRTL} axisLine={false} tickLine={false} tick={{ fill: 'var(--ink-500)', fontSize: 12 }} tickMargin={12} interval="preserveStartEnd" />
+          <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--ink-500)', fontSize: 12 }} tickMargin={12} tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value} orientation={isRTL ? 'right' : 'left'} width={50} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+          <Bar dataKey="payments" name={t("payments")} fill="#f54e00" barSize={32} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

@@ -54,7 +54,10 @@ export function ExportTransactionsButton({ clientId, caseId }: { clientId?: stri
         throw new Error("Failed to export report");
       }
 
-      if (!response.ok) throw new Error("Failed to export report");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to export report");
+      }
 
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
@@ -78,7 +81,8 @@ export function ExportTransactionsButton({ clientId, caseId }: { clientId?: stri
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error) {
       console.error(error);
-      setErrorMessage(locale === 'ar' ? "فشل تصدير التقرير. يرجى المحاولة مرة أخرى." : "Failed to export report. Please try again.");
+      const msg = error instanceof Error ? error.message : "Failed to export report. Please try again.";
+      setErrorMessage(locale === 'ar' ? `فشل تصدير التقرير: ${msg}` : `Failed to export report: ${msg}`);
       setErrorModalOpen(true);
     } finally {
       setIsExporting(false);

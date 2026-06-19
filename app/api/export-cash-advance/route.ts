@@ -15,6 +15,9 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const locale = searchParams.get('locale') || 'en';
+    if (!['en', 'ar'].includes(locale)) {
+      return new NextResponse('Invalid locale', { status: 400 });
+    }
 
     // Load translations
     const messagesPath = path.join(process.cwd(), 'messages', `${locale}.json`);
@@ -31,6 +34,9 @@ export async function GET(request: Request) {
       }
       return (val as string) || key;
     };
+
+    const escapeHtml = (s: string): string =>
+      s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 
     const supabase = await createClient();
     const users = await getAllUsers();
@@ -283,7 +289,7 @@ export async function GET(request: Request) {
             ${usersData.map((u_row, index) => `
               <tr>
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
-                <td>${u_row.full_name || ''}</td>
+                <td>${escapeHtml(u_row.full_name || '')}</td>
                 <td>${t('Roles.' + u_row.role)}</td>
                 <td class="amount-cell">
                   ${Number(u_row.cash_advance || 0).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
@@ -378,6 +384,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error generating PDF:', error);
-    return new NextResponse('Error generating PDF: ' + (error as Error).message, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    return new NextResponse('Internal server error: ' + msg, { status: 500 });
   }
 }

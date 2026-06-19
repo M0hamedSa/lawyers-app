@@ -1,7 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+const siteUrl = Deno.env.get("SITE_URL") || "";
 const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": siteUrl,
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };

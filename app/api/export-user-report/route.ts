@@ -15,6 +15,9 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const locale = searchParams.get('locale') || 'en';
+    if (!['en', 'ar'].includes(locale)) {
+      return new NextResponse('Invalid locale', { status: 400 });
+    }
 
     // Load translations
     const messagesPath = path.join(process.cwd(), 'messages', `${locale}.json`);
@@ -31,6 +34,9 @@ export async function GET(request: Request) {
       }
       return (val as string) || key;
     };
+
+    const escapeHtml = (s: string): string =>
+      s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 
     // Retrieve active dashboard data (scoped securely to current user via session)
     const data = await getDashboardData();
@@ -293,10 +299,10 @@ export async function GET(request: Request) {
               <tr>
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
                 <td>${new Date(tx.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                <td>${tx.clients?.name || '-'}</td>
+                <td>${escapeHtml(tx.clients?.name || '-')}</td>
                 ${isSuperAdmin ? `<td>${t(tx.type === 'payment' ? 'Common.payment' : 'Common.expense')}</td>` : ''}
-                ${isSuperAdmin ? `<td>${tx.users?.full_name || '-'}</td>` : ''}
-                <td>${tx.description || '-'}</td>
+                ${isSuperAdmin ? `<td>${escapeHtml(tx.users?.full_name || '-')}</td>` : ''}
+                <td>${escapeHtml(tx.description || '-')}</td>
                 <td class="numeric-cell ${tx.type === 'payment' ? 'positive' : 'negative'}" style="text-align: ${isRtl ? 'left' : 'right'}">
                   ${tx.type === 'payment' ? '+' : '-'}${Number(tx.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
                 </td>
@@ -390,6 +396,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error generating user summary PDF:', error);
-    return new NextResponse('Error generating PDF: ' + (error as Error).message, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    return new NextResponse('Internal server error: ' + msg, { status: 500 });
   }
 }

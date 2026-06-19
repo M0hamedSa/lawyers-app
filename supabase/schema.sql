@@ -159,7 +159,13 @@ drop policy if exists "Authenticated users can read firm users" on public.users;
 create policy "Authenticated users can read firm users"
 on public.users for select
 to authenticated
-using (true);
+using (
+  id = auth.uid()
+  or exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+);
 
 drop policy if exists "Users can insert own profile" on public.users;
 create policy "Users can insert own profile"
@@ -205,7 +211,13 @@ drop policy if exists "Users can read client access" on public.client_access;
 create policy "Users can read client access"
 on public.client_access for select
 to authenticated
-using (true);
+using (
+  user_id = auth.uid()
+  or exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+);
 
 -- Clients policies
 drop policy if exists "Users can read assigned clients" on public.clients;
@@ -284,14 +296,44 @@ drop policy if exists "Authenticated users can create transactions" on public.tr
 create policy "Authenticated users can create transactions"
 on public.transactions for insert
 to authenticated
-with check (created_by = auth.uid());
+with check (
+  created_by = auth.uid()
+  and (
+    exists (
+      select 1 from public.users u
+      where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+    )
+    or exists (
+      select 1 from public.client_access ca
+      where ca.client_id = client_id and ca.user_id = auth.uid()
+    )
+  )
+);
 
 drop policy if exists "Authenticated users can update transactions" on public.transactions;
 create policy "Authenticated users can update transactions"
 on public.transactions for update
 to authenticated
-using (true)
-with check (true);
+using (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+  or created_by = auth.uid()
+)
+with check (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+  or (
+    created_by = auth.uid()
+    and exists (
+      select 1 from public.client_access ca
+      where ca.client_id = client_id and ca.user_id = auth.uid()
+    )
+  )
+);
 
 drop policy if exists "Admins can delete transactions" on public.transactions;
 create policy "Admins can delete transactions"
@@ -331,7 +373,7 @@ begin
   values (
     new.id, 
     coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)), 
-    coalesce((new.raw_user_meta_data->>'role')::public.user_role, 'user'::public.user_role)
+    'user'::public.user_role
   );
   return new;
 end;
