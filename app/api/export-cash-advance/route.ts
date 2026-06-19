@@ -73,6 +73,13 @@ export async function GET(request: Request) {
     const isRtl = locale === 'ar';
     const reportTitle = t('CashAdvance.reportTitle') || 'Cash Advance Report';
 
+    const logoPath = path.join(process.cwd(), 'public', 'logo.png');
+    const logoSrc = fs.existsSync(logoPath)
+      ? `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`
+      : '';
+
+    const exportedAt = `${user.full_name} · ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="${locale}" dir="${isRtl ? 'rtl' : 'ltr'}">
@@ -103,21 +110,47 @@ export async function GET(request: Request) {
           .header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 40px;
-            border-bottom: 2px solid var(--ink-100);
+            align-items: center;
+            margin-bottom: 36px;
+            border-bottom: 1px solid var(--ink-100);
             padding-bottom: 20px;
           }
-          .title-area h1 { 
-            margin: 0; 
-            font-size: 28px; 
+          .brand-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          .brand-logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: block;
+          }
+          .brand-text .brand-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--primary);
+            line-height: 1.2;
+          }
+          .brand-text .brand-sub {
+            font-size: 11px;
+            color: var(--ink-500);
+            margin-top: 1px;
+          }
+          .title-area {
+            text-align: ${isRtl ? 'left' : 'right'};
+          }
+          .title-area h1 {
+            margin: 0;
+            font-size: 18px;
             font-weight: 700;
             color: var(--ink-900);
+            letter-spacing: -0.02em;
           }
-          .meta { 
-            color: var(--ink-500); 
-            font-size: 14px; 
-            margin-top: 5px;
+          .meta {
+            font-size: 11px;
+            color: var(--ink-500);
+            margin-top: 4px;
           }
           .summary-strip {
             display: flex;
@@ -188,24 +221,31 @@ export async function GET(request: Request) {
           .expense { color: #dc2626; }
           
           .footer {
-            margin-top: 50px;
-            padding-top: 20px;
+            position: fixed;
+            bottom: 0;
+            left: 40px;
+            right: 40px;
+            padding: 12px 0;
             border-top: 1px solid var(--ink-100);
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--ink-500);
+            background: var(--bg);
           }
         </style>
       </head>
       <body>
         <div class="header">
+          <div class="brand-area">
+            <div class="brand-logo">${logoSrc ? `<img src="${logoSrc}" />` : ''}</div>
+            <div class="brand-text">
+              <div class="brand-name">${t('Sidebar.appName')}</div>
+              <div class="brand-sub">${t('Sidebar.subtitle')}</div>
+            </div>
+          </div>
           <div class="title-area">
             <h1>${reportTitle}</h1>
-            <div class="meta">${t('CashAdvance.title')} · ${new Date().toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short' })}</div>
-          </div>
-          <div style="text-align: ${isRtl ? 'left' : 'right'}">
-            <div style="font-weight: 700; color: var(--primary); font-size: 18px;">${t('Sidebar.appName')}</div>
-            <div style="font-size: 12px; color: var(--ink-500);">${t('Sidebar.subtitle')}</div>
+            <div class="meta"><span dir="ltr">${exportedAt}</span></div>
           </div>
         </div>
         
@@ -318,7 +358,7 @@ export async function GET(request: Request) {
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+      margin: { top: '20px', right: '20px', bottom: '60px', left: '20px' }
     });
 
     await browser.close();

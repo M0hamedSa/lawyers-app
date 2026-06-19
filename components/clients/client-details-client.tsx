@@ -19,6 +19,8 @@ import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { encodeId } from "@/lib/id-utils";
 import { ExportTransactionsButton } from "@/components/admin/export-transactions-button"; // Need to update this to client/cases export later
 import { FadeInBox, StaggerContainer, CountUpNumber } from "@/components/ui/animated";
+import { CashFlowChart } from "@/components/charts/cash-flow-chart";
+import { ClientBreakdownChart } from "@/components/charts/client-breakdown-chart";
 
 type Tab = "overview" | "cases" | "files";
 
@@ -37,16 +39,23 @@ const emptyCase: CaseForm = {
   profit_amount: "",
 };
 
+type CashFlowPoint = { month: string; payments: number; expenses: number };
+type CaseBreakdownPoint = { name: string; payments: number; expenses: number };
+
 export function ClientDetailsClient({
   client,
   initialCases,
   currentUser,
   userGlobalBalance,
+  cashFlowData = [],
+  caseBreakdownData = [],
 }: {
   client: ClientWithSummary;
   initialCases: CaseWithSummary[];
   currentUser: { id: string; role: string; cash_advance: number } | null;
   userGlobalBalance?: number;
+  cashFlowData?: CashFlowPoint[];
+  caseBreakdownData?: CaseBreakdownPoint[];
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -266,8 +275,10 @@ export function ClientDetailsClient({
       {activeTab === "overview" ? (
           <OverviewTab
             client={client}
-            balance={balance}
             casesCount={cases.length}
+            cashFlowData={cashFlowData}
+            caseBreakdownData={caseBreakdownData}
+            userRole={userRole}
           />
       ) : null}
       {activeTab === "cases" ? (
@@ -374,43 +385,126 @@ function FinanceMetric({ label, value, tone, rawValue, locale = "en-US" }: { lab
   );
 }
 
-function OverviewTab({ client, balance, casesCount }: { client: ClientWithSummary; balance: number; casesCount: number }) {
+function OverviewTab({
+  client,
+  casesCount,
+  cashFlowData,
+  caseBreakdownData,
+  userRole,
+}: {
+  client: ClientWithSummary;
+  casesCount: number;
+  cashFlowData: CashFlowPoint[];
+  caseBreakdownData: CaseBreakdownPoint[];
+  userRole: string | null;
+}) {
   const t = useTranslations("ClientDetails");
   const tCases = useTranslations("Cases");
+  const tCharts = useTranslations("Charts");
+  const tClients = useTranslations("Clients");
   const locale = useLocale();
 
+  const hasCashFlow = cashFlowData.some((d) => d.payments > 0 || d.expenses > 0);
+  const hasCaseBreakdown = caseBreakdownData.length > 0;
+
   return (
-    <StaggerContainer className="grid gap-4 sm:gap-6 md:grid-cols-2">
-      <Card>
+    <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* Client overview card */}
+      <Card className="h-full flex flex-col">
         <CardHeader className="border-b border-ink-100 py-3 dark:border-ink-800 dark:bg-ink-950/20 sm:py-4">
           <CardTitle className="text-sm sm:text-base">{t("clientOverview")}</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 flex-grow">
           <dl className="divide-y divide-ink-100 text-sm dark:divide-ink-800">
-            <div className="flex justify-between px-4 py-3 sm:px-6">
-              <dt className="text-ink-500 dark:text-ink-400">{tCases("title")}</dt>
-              <dd className="font-semibold tabular-nums text-ink-800 dark:text-ink-100">{casesCount}</dd>
+            {/* Row 1: Status & Cases No */}
+            <div className="grid grid-cols-2">
+              <div className="flex justify-between items-center px-4 py-4 sm:px-6 border-e border-ink-100 dark:border-ink-800">
+                <dt className="text-ink-500 dark:text-ink-400">{tClients("form.status")}</dt>
+                <dd>
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold border",
+                      client.status === "active"
+                        ? "bg-success-50 text-success-700 border-success-200/50 dark:bg-success-950/30 dark:text-success-400 dark:border-success-800/50"
+                        : "bg-ink-50 text-ink-600 border-ink-200/50 dark:bg-ink-900 dark:text-ink-400 dark:border-ink-800/50"
+                    )}
+                  >
+                    {client.status === "active" ? tClients("form.active") : tClients("form.inactive")}
+                  </span>
+                </dd>
+              </div>
+              <div className="flex justify-between items-center px-4 py-4 sm:px-6">
+                <dt className="text-ink-500 dark:text-ink-400">{tCases("title")}</dt>
+                <dd className="font-semibold tabular-nums text-ink-800 dark:text-ink-100">{casesCount}</dd>
+              </div>
             </div>
-            <div className="flex justify-between px-4 py-3 sm:px-6">
-              <dt className="text-ink-500 dark:text-ink-400">{t("balance")}</dt>
-              <dd
-                className={cn(
-                  "text-display-sm tabular-nums sm:text-2xl",
-                  "text-ink-800 dark:text-ink-100",
-                )}
-              >
-                {formatCurrency(balance, locale)}
-              </dd>
+
+            {/* Row 2: Profit Type & Created Date */}
+            <div className="grid grid-cols-2">
+              <div className="flex justify-between items-center px-4 py-4 sm:px-6 border-e border-ink-100 dark:border-ink-800">
+                <dt className="text-ink-500 dark:text-ink-400">{tClients("form.profitType")}</dt>
+                <dd className="font-medium text-ink-800 dark:text-ink-100">
+                  {client.profit_type === "monthly" ? tClients("form.monthly") : tClients("form.perCase")}
+                </dd>
+              </div>
+              <div className="flex justify-between items-center px-4 py-4 sm:px-6">
+                <dt className="text-ink-500 dark:text-ink-400">{t("created")}</dt>
+                <dd className="font-medium tabular-nums text-ink-800 dark:text-ink-100">
+                  {formatDate(client.created_at, locale)}
+                </dd>
+              </div>
             </div>
-            <div className="flex justify-between px-4 py-3 sm:px-6">
-              <dt className="text-ink-500 dark:text-ink-400">{t("created")}</dt>
-              <dd className="font-medium tabular-nums text-ink-800 dark:text-ink-100">
-                {formatDate(client.created_at, locale)}
-              </dd>
-            </div>
+
+            {/* Row 4: Phone */}
+            {client.phone && (
+              <div className="flex justify-between px-4 py-4 sm:px-6">
+                <dt className="text-ink-500 dark:text-ink-400">{tClients("form.phone")}</dt>
+                <dd className="font-medium text-ink-800 dark:text-ink-100 tabular-nums">
+                  {client.phone}
+                </dd>
+              </div>
+            )}
+
+            {/* Row 5: Email */}
+            {client.email && (
+              <div className="flex justify-between px-4 py-4 sm:px-6">
+                <dt className="text-ink-500 dark:text-ink-400">{tClients("form.email")}</dt>
+                <dd className="font-medium text-ink-800 dark:text-ink-100">
+                  {client.email}
+                </dd>
+              </div>
+            )}
+
+            {/* Row 6: Created By */}
+            {client.creator_name && (
+              <div className="flex justify-between px-4 py-4 sm:px-6">
+                <dt className="text-ink-500 dark:text-ink-400">{t("createdBy")}</dt>
+                <dd className="font-medium text-ink-800 dark:text-ink-100">
+                  {client.creator_name}
+                </dd>
+              </div>
+            )}
           </dl>
         </CardContent>
       </Card>
+
+      {/* Cash flow chart */}
+      {hasCashFlow && (
+        <Card className="p-5 h-full flex flex-col justify-between">
+          <h3 className="mb-4 text-title-sm text-ink-800 dark:text-ink-100">{tCharts("cashFlow")}</h3>
+          <div className="flex-grow flex items-center justify-center">
+            <CashFlowChart data={cashFlowData} locale={locale} />
+          </div>
+        </Card>
+      )}
+
+      {/* Case breakdown chart — superadmin only (has payment data) */}
+      {hasCaseBreakdown && userRole === "superadmin" && (
+        <Card className="p-5 md:col-span-2">
+          <h3 className="mb-4 text-title-sm text-ink-800 dark:text-ink-100">{tCharts("clientBreakdown")}</h3>
+          <ClientBreakdownChart data={caseBreakdownData} locale={locale} />
+        </Card>
+      )}
     </StaggerContainer>
   );
 }

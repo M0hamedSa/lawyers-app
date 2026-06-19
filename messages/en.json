@@ -65,6 +65,18 @@
     "totalExpenses": "Total Expenses",
     "noTransactions": "No transactions yet."
   },
+  "Charts": {
+    "cashFlow": "Cash Flow (6 Months)",
+    "topClients": "Top Clients by Revenue",
+    "clientBreakdown": "Client Payments vs Expenses",
+    "voucherTypes": "Transactions by Voucher Type",
+    "incomeExpense": "Income vs Expenses",
+    "payments": "Payments",
+    "expenses": "Expenses",
+    "customize": "Customize Charts",
+    "showHide": "Show/Hide",
+    "noData": "No data available"
+  },
   "Clients": {
     "title": "Clients",
     "heading": "Client accounts",
@@ -143,6 +155,7 @@
     "transactions": "Transactions",
     "balance": "Balance",
     "created": "Created",
+    "createdBy": "Created By",
     "financialLedger": "Financial ledger",
     "emptyLedger": "No ledger entries yet.",
     "fileStorageText": "File storage can be connected to Supabase Storage."

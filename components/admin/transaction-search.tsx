@@ -63,9 +63,9 @@ export function TransactionSearch({
   };
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto">
-      {/* Search */}
-      <div className="relative min-w-0 flex-1" style={{ minWidth: "160px" }}>
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+      {/* Search — full width on mobile */}
+      <div className="relative col-span-2 min-w-0 sm:flex-1" style={{ minWidth: "160px" }}>
         <div className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-400">
           <Search className="size-3.5" />
         </div>
@@ -81,7 +81,7 @@ export function TransactionSearch({
       {/* Date */}
       <input
         type="date"
-        className={`${inputClassName} w-36 shrink-0 text-sm`}
+        className={`${inputClassName} w-full shrink-0 text-sm sm:w-36`}
         value={date}
         onChange={(e) => setDate(e.target.value)}
         title={t("filterByDate")}
@@ -89,7 +89,7 @@ export function TransactionSearch({
 
       {/* Type */}
       <select
-        className={`${inputClassName} w-36 shrink-0 appearance-none text-sm`}
+        className={`${inputClassName} w-full shrink-0 appearance-none text-sm sm:w-36`}
         value={type}
         onChange={(e) => setType(e.target.value)}
       >
@@ -101,7 +101,7 @@ export function TransactionSearch({
       {/* Client */}
       {clients.length > 0 && (
         <select
-          className={`${inputClassName} w-40 shrink-0 appearance-none text-sm`}
+          className={`${inputClassName} w-full shrink-0 appearance-none text-sm sm:w-40`}
           value={clientId}
           onChange={(e) => handleClientChange(e.target.value)}
         >
@@ -117,7 +117,7 @@ export function TransactionSearch({
       {/* Case — only enabled after client is selected */}
       {clients.length > 0 && (
         <select
-          className={`${inputClassName} w-40 shrink-0 appearance-none text-sm transition-opacity ${!clientId ? "cursor-not-allowed opacity-40" : ""}`}
+          className={`${inputClassName} w-full shrink-0 appearance-none text-sm transition-opacity sm:w-40 ${!clientId ? "cursor-not-allowed opacity-40" : ""}`}
           value={caseId}
           onChange={(e) => setCaseId(e.target.value)}
           disabled={!clientId}
@@ -136,9 +136,10 @@ export function TransactionSearch({
         <button
           onClick={clearFilters}
           title={t("clearFilters")}
-          className="shrink-0 rounded-md p-2 text-ink-400 hover:bg-ink-100 hover:text-ink-600 dark:hover:bg-ink-800 dark:hover:text-ink-200"
+          className="col-span-2 flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm text-ink-500 hover:bg-ink-100 hover:text-ink-700 dark:hover:bg-ink-800 dark:hover:text-ink-200 sm:col-span-1 sm:px-2"
         >
           <X className="size-4" />
+          <span className="sm:hidden">{t("clearFilters")}</span>
         </button>
       )}
     </div>

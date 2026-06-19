@@ -65,6 +65,18 @@
     "totalExpenses": "إجمالي المصروفات",
     "noTransactions": "لا توجد معاملات بعد."
   },
+  "Charts": {
+    "cashFlow": "التدفق النقدي (6 أشهر)",
+    "topClients": "أفضل العملاء من حيث الإيرادات",
+    "clientBreakdown": "العملاء: الدفعات مقابل المصروفات",
+    "voucherTypes": "المعاملات حسب نوع السند",
+    "incomeExpense": "الإيرادات مقابل المصروفات",
+    "payments": "الدفعات",
+    "expenses": "المصروفات",
+    "customize": "تخصيص الرسوم البيانية",
+    "showHide": "إظهار/إخفاء",
+    "noData": "لا توجد بيانات متاحة"
+  },
   "Clients": {
     "title": "العملاء",
     "heading": "حسابات العملاء",
@@ -143,6 +155,7 @@
     "transactions": "المعاملات",
     "balance": "الرصيد",
     "created": "تاريخ الإنشاء",
+    "createdBy": "أنشئ بواسطة",
     "financialLedger": "دفتر الأستاذ المالي",
     "emptyLedger": "لا يوجد قيود دفترية بعد.",
     "fileStorageText": "يمكن ربط تخزين الملفات مع Supabase Storage."

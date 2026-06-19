@@ -35,20 +35,21 @@ export async function GET(request: Request) {
     // Retrieve active dashboard data (scoped securely to current user via session)
     const data = await getDashboardData();
 
-    // Query detailed expense transactions securely
+    // Query transactions — superadmin sees all types, regular user sees own expenses only
     const supabase = await createClient();
     let txQuery = supabase
       .from("transactions")
       .select("*, clients(name), users!transactions_created_by_fkey(full_name)")
-      .eq("type", "expense")
       .order("date", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (user.role !== "superadmin") {
-      txQuery = txQuery.eq("created_by", user.id);
+      txQuery = txQuery
+        .eq("created_by", user.id)
+        .eq("type", "expense");
     }
 
-    const { data: detailedExpenses, error: txError } = await txQuery;
+    const { data: allTransactions, error: txError } = await txQuery;
     if (txError) throw new Error(txError.message);
 
     const isRtl = locale === 'ar';
@@ -66,6 +67,13 @@ export async function GET(request: Request) {
 
     const labelClients = t('Dashboard.totalClients') || 'Total Clients';
     const labelBalance = t('Dashboard.totalBalance') || 'Total Balance';
+
+    const logoPath = path.join(process.cwd(), 'public', 'logo.png');
+    const logoSrc = fs.existsSync(logoPath)
+      ? `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`
+      : '';
+
+    const exportedAt = `${user.full_name} · ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -97,21 +105,47 @@ export async function GET(request: Request) {
           .header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 40px;
-            border-bottom: 2px solid var(--ink-100);
+            align-items: center;
+            margin-bottom: 36px;
+            border-bottom: 1px solid var(--ink-100);
             padding-bottom: 20px;
           }
-          .title-area h1 { 
-            margin: 0; 
-            font-size: 28px; 
+          .brand-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          .brand-logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: block;
+          }
+          .brand-text .brand-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--primary);
+            line-height: 1.2;
+          }
+          .brand-text .brand-sub {
+            font-size: 11px;
+            color: var(--ink-500);
+            margin-top: 1px;
+          }
+          .title-area {
+            text-align: ${isRtl ? 'left' : 'right'};
+          }
+          .title-area h1 {
+            margin: 0;
+            font-size: 18px;
             font-weight: 700;
             color: var(--ink-900);
+            letter-spacing: -0.02em;
           }
-          .meta { 
-            color: var(--ink-500); 
-            font-size: 14px; 
-            margin-top: 5px;
+          .meta {
+            font-size: 11px;
+            color: var(--ink-500);
+            margin-top: 4px;
           }
           .summary-strip {
             display: flex;
@@ -182,24 +216,31 @@ export async function GET(request: Request) {
           .positive { color: #059669; }
           
           .footer {
-            margin-top: 50px;
-            padding-top: 20px;
+            position: fixed;
+            bottom: 0;
+            left: 40px;
+            right: 40px;
+            padding: 12px 0;
             border-top: 1px solid var(--ink-100);
             text-align: center;
             font-size: 11px;
             color: var(--ink-500);
+            background: var(--bg);
           }
         </style>
       </head>
       <body>
         <div class="header">
+          <div class="brand-area">
+            <div class="brand-logo">${logoSrc ? `<img src="${logoSrc}" />` : ''}</div>
+            <div class="brand-text">
+              <div class="brand-name">${t('Sidebar.appName')}</div>
+              <div class="brand-sub">${t('Sidebar.subtitle')}</div>
+            </div>
+          </div>
           <div class="title-area">
             <h1>${reportTitle}</h1>
-            <div class="meta">${t('Sidebar.subtitle')} · ${new Date().toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short' })}</div>
-          </div>
-          <div style="text-align: ${isRtl ? 'left' : 'right'}">
-            <div style="font-weight: 700; color: var(--primary); font-size: 18px;">${t('Sidebar.appName')}</div>
-            <div style="font-size: 12px; color: var(--ink-500);">${user.full_name} (${data.userRole || ''})</div>
+            <div class="meta"><span dir="ltr">${exportedAt}</span></div>
           </div>
         </div>
         
@@ -225,7 +266,7 @@ export async function GET(request: Request) {
         </div>
 
         <h3 style="margin-top: 40px; font-size: 16px; border-bottom: 1px solid var(--ink-100); padding-bottom: 8px;">
-          ${t('Common.detailedExpenses') || 'Detailed Expense Transactions'}
+          ${isSuperAdmin ? (t('Admin.allTransactions') || 'All Transactions') : (t('Common.detailedExpenses') || 'My Expenses')}
         </h3>
 
         <table>
@@ -234,28 +275,30 @@ export async function GET(request: Request) {
               <th style="width: 40px; text-align: center;">#</th>
               <th>${t('Transaction.columns.date') || 'Date'}</th>
               <th>${t('Clients.columns.client') || 'Client'}</th>
+              ${isSuperAdmin ? `<th>${t('Transaction.columns.type') || 'Type'}</th>` : ''}
               ${isSuperAdmin ? `<th>${t('Common.by') || 'By'}</th>` : ''}
               <th>${t('Transaction.columns.description') || 'Description'}</th>
               <th style="text-align: ${isRtl ? 'left' : 'right'}">${t('Transaction.columns.amount') || 'Amount'}</th>
             </tr>
           </thead>
           <tbody>
-            ${(detailedExpenses || []).map((tx, index) => `
+            ${(allTransactions || []).map((tx, index) => `
               <tr>
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
                 <td>${new Date(tx.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                 <td>${tx.clients?.name || '-'}</td>
+                ${isSuperAdmin ? `<td>${t(tx.type === 'payment' ? 'Common.payment' : 'Common.expense')}</td>` : ''}
                 ${isSuperAdmin ? `<td>${tx.users?.full_name || '-'}</td>` : ''}
                 <td>${tx.description || '-'}</td>
-                <td class="numeric-cell negative" style="text-align: ${isRtl ? 'left' : 'right'}">
-                  -${Number(tx.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
+                <td class="numeric-cell ${tx.type === 'payment' ? 'positive' : 'negative'}" style="text-align: ${isRtl ? 'left' : 'right'}">
+                  ${tx.type === 'payment' ? '+' : '-'}${Number(tx.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
                 </td>
               </tr>
             `).join('')}
-            ${(detailedExpenses || []).length === 0 ? `
+            ${(allTransactions || []).length === 0 ? `
               <tr>
-                <td colspan="${isSuperAdmin ? 6 : 5}" style="text-align: center; padding: 40px; color: var(--ink-500);">
-                  ${t('Transaction.noResults') || 'No expenses recorded currently'}
+                <td colspan="${isSuperAdmin ? 7 : 5}" style="text-align: center; padding: 40px; color: var(--ink-500);">
+                  ${t('Transaction.noResults') || 'No transactions found'}
                 </td>
               </tr>
             ` : ''}
@@ -321,7 +364,7 @@ export async function GET(request: Request) {
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+      margin: { top: '20px', right: '20px', bottom: '60px', left: '20px' }
     });
 
     await browser.close();

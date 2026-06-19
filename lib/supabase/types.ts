@@ -62,6 +62,7 @@ export type ClientWithSummary = Client & {
   total_payments: number;
   total_expenses: number;
   balance: number;
+  creator_name?: string | null;
 };
 
 export type CaseWithSummary = Case & {

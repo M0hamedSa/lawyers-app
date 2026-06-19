@@ -67,15 +67,15 @@ export function Sidebar({
       dir={isRtl ? "rtl" : "ltr"}
     >
       {/* Logo area — hidden on mobile, refined on desktop */}
-      <div className="hidden h-16 shrink-0 items-center gap-3 border-b border-ink-100 px-5 dark:border-ink-800 lg:flex">
-        <div className="flex size-9 items-center justify-center shrink-0">
-          <Image src="/logo.png" alt="Logo" width={36} height={36} className="w-full h-full rounded-full object-cover" />
+      <div className="hidden h-24 shrink-0 items-center gap-3 border-b border-ink-100 px-5 dark:border-ink-800 lg:flex">
+        <div className="flex size-11 items-center justify-center shrink-0">
+          <Image src="/logo.png" alt="Logo" width={44} height={44} className="w-full h-full rounded-full object-cover" />
         </div>
         <div className="min-w-0">
-          <p className="text-caption-uppercase uppercase tracking-wider text-accent-600 dark:text-accent-400">
+          <p className="text-body-sm font-semibold uppercase tracking-wider text-accent-600 dark:text-accent-400">
             {tSidebar("appName")}
           </p>
-          <p className="truncate text-body-sm text-ink-400 dark:text-ink-500">{tSidebar("subtitle")}</p>
+          <p className="truncate text-body-sm text-ink-500 dark:text-ink-400">{tSidebar("subtitle")}</p>
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { StaggerContainer } from "@/components/ui/animated";
 import { getDashboardData } from "@/lib/supabase/queries";
 import { formatCurrency } from "@/lib/utils";
 import { ExportUserReportButton } from "@/components/dashboard/export-user-report-button";
+import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         </div>
       </div>
 
-      <StaggerContainer className="grid grid-cols-2 gap-4 sm:gap-5 xl:grid-cols-4">
+      <StaggerContainer className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
         <MetricCard tone="neutral" label={t("totalClients")} value={String(data.totalClients)} rawValue={data.totalClients} />
         {data.userRole === "superadmin" && (
           <MetricCard tone="payment" label={t("totalPayments")} value={formatCurrency(data.totalPayments, locale)} rawValue={data.totalPayments} />
@@ -43,6 +44,8 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         <MetricCard tone="expense" label={data.userRole === "superadmin" ? t("totalExpenses") : tCommon("myExpenses")} value={formatCurrency(data.totalExpenses, locale)} rawValue={data.totalExpenses} />
         <MetricCard tone="balance" label={data.userRole === "superadmin" ? t("totalBalance") : tCommon("balance")} value={formatCurrency(data.totalBalance, locale)} rawValue={data.totalBalance} />
       </StaggerContainer>
+
+      <DashboardCharts chartData={data.chartData} locale={locale} userRole={data.userRole} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Cairo } from "next/font/google";
 import Script from "next/script";
 import { NextIntlClientProvider } from 'next-intl';
@@ -10,6 +10,13 @@ import "../globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 const cairo = Cairo({ subsets: ["arabic"] });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Prevents unwanted zoom on mobile inputs
+};
 
 export async function generateMetadata({
   params

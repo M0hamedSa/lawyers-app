@@ -24,6 +24,7 @@
     "puppeteer-core": "^24.43.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "recharts": "^3.8.1",
     "sqids": "^0.3.0",
     "tailwind-merge": "^2.5.5",
     "use-debounce": "^10.1.1"

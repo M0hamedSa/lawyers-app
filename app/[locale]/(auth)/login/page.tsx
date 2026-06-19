@@ -37,8 +37,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-ink-950">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center">
-          <div className="flex size-12 items-center justify-center shrink-0">
-            <Image src="/logo.png" alt="Logo" width={48} height={48} className="w-full h-full rounded-full object-cover" />
+          <div className="flex size-24 items-center justify-center shrink-0">
+            <Image src="/logo.png" alt="Logo" width={96} height={96} className="w-full h-full rounded-full object-cover" />
           </div>
           <h2 className="mt-6 text-center text-display-lg text-ink-800 dark:text-ink-100">
             {t("title")}

@@ -14,6 +14,7 @@ type ClientRow = {
   created_at: string;
   updated_at: string;
   transactions: { amount: number; type: "payment" | "expense"; created_by?: string }[];
+  creator?: { full_name: string } | null;
 };
 
 export type CaseRow = {
@@ -60,6 +61,7 @@ function withSummary(client: ClientRow, currentUser: SummaryUser | null = null):
     total_payments: totals.total_payments,
     total_expenses: totals.total_expenses,
     balance: totals.total_payments - totals.total_expenses,
+    creator_name: client.creator?.full_name || null,
   };
 }
 
@@ -97,7 +99,7 @@ export async function getClients() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
-    .select("*, transactions(amount, type, created_by)")
+    .select("*, creator:users!clients_created_by_fkey(full_name), transactions(amount, type, created_by)")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -109,7 +111,7 @@ export async function getClient(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
-    .select("*, transactions(amount, type, created_by)")
+    .select("*, creator:users!clients_created_by_fkey(full_name), transactions(amount, type, created_by)")
     .eq("id", id)
     .single();
 
@@ -192,6 +194,66 @@ export async function getDashboardData() {
     }
   }
 
+  const { data: transactionsData } = await (await createClient())
+    .from("transactions")
+    .select("amount, type, voucher_type, date, client_id, clients(name)");
+
+  const transactions = transactionsData || [];
+
+  // Cash Flow (Last 6 Months)
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1); // Start of the 6th month ago
+  
+  const cashFlowMap = new Map<string, { month: string; payments: number; expenses: number }>();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const monthKey = d.toISOString().slice(0, 7); // YYYY-MM
+    cashFlowMap.set(monthKey, { month: monthKey, payments: 0, expenses: 0 });
+  }
+
+  // Voucher Types
+  const voucherTypesMap = new Map<string, number>();
+
+  transactions.forEach(t => {
+    // Voucher types aggregation
+    const vType = t.voucher_type || "cash";
+    voucherTypesMap.set(vType, (voucherTypesMap.get(vType) || 0) + Number(t.amount));
+
+    // Cash flow aggregation
+    const dateObj = new Date(t.date);
+    if (dateObj >= sixMonthsAgo) {
+      const monthKey = t.date.slice(0, 7); // YYYY-MM
+      if (cashFlowMap.has(monthKey)) {
+        const entry = cashFlowMap.get(monthKey)!;
+        if (t.type === "payment") entry.payments += Number(t.amount);
+        if (t.type === "expense") entry.expenses += Number(t.amount);
+      }
+    }
+  });
+
+  const cashFlow = Array.from(cashFlowMap.values()).reverse(); // Chronological order
+  
+  const voucherTypes = Array.from(voucherTypesMap.entries()).map(([name, value]) => ({ name, value }));
+
+  // Top Clients by payments (using the already fetched 'clients')
+  const topClients = [...clients]
+    .sort((a, b) => b.total_payments - a.total_payments)
+    .slice(0, 5)
+    .map(c => ({ name: c.name, payments: c.total_payments, expenses: c.total_expenses }));
+
+  // Client Financials (Top 10 by volume)
+  const clientFinancials = [...clients]
+    .sort((a, b) => (b.total_payments + b.total_expenses) - (a.total_payments + a.total_expenses))
+    .slice(0, 10)
+    .map(c => ({ name: c.name, payments: c.total_payments, expenses: c.total_expenses }));
+
+  const incomeExpenseRatio = [
+    { name: "Payments", value: totalPayments },
+    { name: "Expenses", value: totalExpenses }
+  ];
+
   return {
     clients,
     totalClients: clients.length,
@@ -199,6 +261,13 @@ export async function getDashboardData() {
     totalPayments,
     totalExpenses,
     userRole: currentUser?.role || null,
+    chartData: {
+      cashFlow,
+      topClients,
+      clientFinancials,
+      voucherTypes,
+      incomeExpenseRatio
+    }
   };
 }
 export async function getAllTransactions() {
