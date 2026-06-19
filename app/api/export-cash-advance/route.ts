@@ -320,15 +320,7 @@ export async function GET(request: Request) {
       const puppeteer = (await import('puppeteer-core')).default;
 
       // Register Arabic font for production
-      try {
-        const fontPath = path.join(process.cwd(), 'fonts', 'Cairo.ttf');
-        if (fs.existsSync(fontPath)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (chromium as any).font(fontPath);
-        }
-      } catch (fontError) {
-        console.error('Failed to register font:', fontError);
-      }
+
 
       const CHROMIUM_PACK_URL = 'https://github.com/Sparticuz/chromium/releases/download/v148.0.0/chromium-v148.0.0-pack.x64.tar';
 
