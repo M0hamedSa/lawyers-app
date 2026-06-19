@@ -52,6 +52,13 @@ export async function GET(request: Request) {
     const { data: allTransactions, error: txError } = await txQuery;
     if (txError) throw new Error(txError.message);
 
+    // Block export if there is truly no data to show (no transactions AND no clients)
+    const hasTransactions = allTransactions && allTransactions.length > 0;
+    const hasClients = data.totalClients > 0;
+    if (!hasTransactions && !hasClients) {
+      return new NextResponse(JSON.stringify({ error: 'NO_DATA' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
     const isRtl = locale === 'ar';
     const isSuperAdmin = data.userRole === 'superadmin';
 

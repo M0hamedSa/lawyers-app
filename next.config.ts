@@ -5,8 +5,11 @@ const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
   typedRoutes: true,
+  serverExternalPackages: ['puppeteer-core', '@sparticuz/chromium-min'],
   outputFileTracingIncludes: {
-    '/api/export-transactions': ['./fonts/**/*'],
+    '/api/export-transactions': ['./fonts/**/*', './public/logo.png'],
+    '/api/export-cash-advance': ['./fonts/**/*', './public/logo.png'],
+    '/api/export-user-report': ['./fonts/**/*', './public/logo.png'],
   },
 };
 

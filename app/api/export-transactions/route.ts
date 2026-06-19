@@ -78,6 +78,10 @@ export async function GET(request: Request) {
 
     const transactionsToReport = filteredTransactions;
 
+    if (transactionsToReport.length === 0) {
+      return new NextResponse(JSON.stringify({ error: 'NO_DATA' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
     let totalIncome = 0;
     let totalExpense = 0;
 

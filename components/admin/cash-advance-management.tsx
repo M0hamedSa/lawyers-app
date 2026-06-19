@@ -7,7 +7,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { ActionButton } from "@/components/ui/action-button";
 import { Modal } from "@/components/ui/modal";
 import { useLocale, useTranslations } from "next-intl";
-import { Users, Loader2, Download } from "lucide-react";
+import { Users, Loader2, Download, Info } from "lucide-react";
 import { inputClassName } from "@/components/ui/field";
 import { CountUpNumber } from "@/components/ui/animated";
 
@@ -65,8 +65,56 @@ export function CashAdvanceManagement({
     setSubmitting(false);
   }
 
-  const handleExport = () => {
-    window.location.href = `/api/export-cash-advance?locale=${locale}`;
+  const [isExporting, setIsExporting] = useState(false);
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const response = await fetch(`/api/export-cash-advance?locale=${locale}`);
+
+      // Check for NO_DATA signal (returned as 200 + JSON to avoid console errors)
+      const contentType = response.headers.get("Content-Type") ?? "";
+      if (contentType.includes("application/json")) {
+        const errData = await response.json();
+        if (errData.error === "NO_DATA") {
+          setErrorMessage(locale === 'ar' ? "لا توجد بيانات متاحة لهذا التقرير." : "No data available for this report.");
+          setErrorModalOpen(true);
+          return;
+        }
+        throw new Error("Failed to export report");
+      }
+
+      if (!response.ok) throw new Error("Failed to export report");
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = locale === 'ar' ? "تقرير_السلف.pdf" : "cash_advance_report.pdf";
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch && filenameMatch.length === 2) {
+          filename = decodeURIComponent(filenameMatch[1]);
+        }
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error(error);
+      setErrorMessage(locale === 'ar' ? "فشل تصدير التقرير. يرجى المحاولة مرة أخرى." : "Failed to export report. Please try again.");
+      setErrorModalOpen(true);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const totalAdvances = users.reduce((sum, u) => sum + u.cash_advance, 0);
@@ -107,8 +155,12 @@ export function CashAdvanceManagement({
 
       <div className="flex justify-between items-center">
         <h3 className="text-display-sm text-ink-800 dark:text-ink-100">{t("teamMembers")}</h3>
-        <ActionButton onClick={handleExport} variant="secondary">
-          <Download className="size-4 mr-2 rtl:mr-0 rtl:ml-2" />
+        <ActionButton onClick={handleExport} variant="secondary" disabled={isExporting}>
+          {isExporting ? (
+            <Loader2 className="size-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
+          ) : (
+            <Download className="size-4 mr-2 rtl:mr-0 rtl:ml-2" />
+          )}
           {t("reportTitle")}
         </ActionButton>
       </div>
@@ -226,6 +278,22 @@ export function CashAdvanceManagement({
               {tCommon("cancel")}
             </ActionButton>
           </div>
+        </div>
+      </Modal>
+
+      <Modal 
+        title={locale === 'ar' ? "تنبيه" : "Notice"} 
+        open={errorModalOpen} 
+        onClose={() => setErrorModalOpen(false)}
+      >
+        <div className="flex flex-col items-center justify-center gap-4 py-4 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300">
+            <Info className="size-6" aria-hidden />
+          </div>
+          <p className="text-body-md text-ink-800 dark:text-ink-100">{errorMessage}</p>
+          <ActionButton onClick={() => setErrorModalOpen(false)} className="mt-2 min-w-[120px]">
+            {locale === 'ar' ? "حسناً" : "OK"}
+          </ActionButton>
         </div>
       </Modal>
     </div>

@@ -70,6 +70,10 @@ export async function GET(request: Request) {
         };
       });
 
+    if (usersData.length === 0) {
+      return new NextResponse(JSON.stringify({ error: 'NO_DATA' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
     const isRtl = locale === 'ar';
     const reportTitle = t('CashAdvance.reportTitle') || 'Cash Advance Report';
 
