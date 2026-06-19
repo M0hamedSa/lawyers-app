@@ -11,7 +11,7 @@ const CSP = [
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' data: blob:`,
   `font-src 'self' data: https://fonts.gstatic.com`,
-  `connect-src 'self' https://*.supabase.co`,
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co`,
   `frame-src 'none'`,
   `object-src 'none'`,
   `base-uri 'self'`,
