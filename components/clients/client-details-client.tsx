@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import type { Route } from "next";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Edit2, Download, FileText, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit2, Download, Eye, FileText, Plus, Loader2 } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -653,8 +653,12 @@ function FilesTab({ clientId }: { clientId: string }) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  function handleDownload(file: CaseFile) {
+  function handleView(file: CaseFile) {
     window.open(`/api/cases/${file.case_id}/files/${file.id}/download`, "_blank");
+  }
+
+  function handleDownload(file: CaseFile) {
+    window.open(`/api/cases/${file.case_id}/files/${file.id}/download?download=1`, "_blank");
   }
 
   return (
@@ -693,8 +697,17 @@ function FilesTab({ clientId }: { clientId: string }) {
                   </div>
                   <button
                     type="button"
+                    onClick={() => handleView(file)}
+                    className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm text-accent-600 transition-colors hover:bg-accent-50 dark:text-accent-400 dark:hover:bg-accent-950/30"
+                    title="View"
+                  >
+                    <Eye className="size-4" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleDownload(file)}
                     className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm text-accent-600 transition-colors hover:bg-accent-50 dark:text-accent-400 dark:hover:bg-accent-950/30"
+                    title="Download"
                   >
                     <Download className="size-4" />
                   </button>

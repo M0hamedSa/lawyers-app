@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { FileText, Loader2, Trash2, Download, Upload, AlertCircle } from "lucide-react";
+import { FileText, Loader2, Trash2, Download, Upload, AlertCircle, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { CaseFile } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
@@ -99,8 +99,12 @@ export function FilesTab({ caseId }: { caseId: string }) {
     }
   }
 
-  function handleDownload(file: CaseFile) {
+  function handleView(file: CaseFile) {
     window.open(`/api/cases/${caseId}/files/${file.id}/download`, "_blank");
+  }
+
+  function handleDownload(file: CaseFile) {
+    window.open(`/api/cases/${caseId}/files/${file.id}/download?download=1`, "_blank");
   }
 
   if (loading) {
@@ -175,8 +179,17 @@ export function FilesTab({ caseId }: { caseId: string }) {
                 </div>
                 <button
                   type="button"
+                  onClick={() => handleView(file)}
+                  className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm text-accent-600 transition-colors hover:bg-accent-50 dark:text-accent-400 dark:hover:bg-accent-950/30"
+                  title="View"
+                >
+                  <Eye className="size-4" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleDownload(file)}
                   className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm text-accent-600 transition-colors hover:bg-accent-50 dark:text-accent-400 dark:hover:bg-accent-950/30"
+                  title="Download"
                 >
                   <Download className="size-4" />
                 </button>

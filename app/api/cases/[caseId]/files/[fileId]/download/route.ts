@@ -40,10 +40,13 @@ export async function GET(
 
     const buffer = await getFileBuffer(dbFile.mega_node_id);
 
+    const isDownload = request.nextUrl.searchParams.get("download") === "1";
+    const disposition = isDownload ? "attachment" : "inline";
+
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": dbFile.mime_type || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${dbFile.filename}"`,
+        "Content-Disposition": `${disposition}; filename="${dbFile.filename}"`,
         "Content-Length": String(buffer.length),
       },
     });
