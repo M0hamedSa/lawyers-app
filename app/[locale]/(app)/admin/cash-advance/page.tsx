@@ -32,7 +32,7 @@ export default async function AdminCashAdvancePage({
   const { data: transactions } = await supabase
     .from("transactions")
     .select("amount, created_by")
-    .eq("type", "expense");
+    .in("type", ["expense", "office"]);
 
   // Aggregate expenses per user
   const userExpenses = (transactions || []).reduce((acc, t) => {

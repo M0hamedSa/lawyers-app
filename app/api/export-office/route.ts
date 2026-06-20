@@ -1,22 +1,30 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUser, getAllUsers } from '@/lib/supabase/queries';
 import { createClient } from '@/lib/supabase/server';
 import fs from 'fs';
 import path from 'path';
 
-export const maxDuration = 60; // Allow up to 60 seconds for PDF generation
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user || user.role !== 'superadmin') {
-      return new NextResponse('Unauthorized', { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const locale = searchParams.get('locale') || 'en';
     if (!['en', 'ar'].includes(locale)) {
       return new NextResponse('Invalid locale', { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data: currentUser } = await supabase
+      .from('users')
+      .select('role, full_name')
+      .eq('id', user.id)
+      .single();
+
+    if (currentUser?.role !== 'superadmin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Load translations
@@ -38,64 +46,34 @@ export async function GET(request: Request) {
     const escapeHtml = (s: string): string =>
       s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 
-    const supabase = await createClient();
-    const users = await getAllUsers();
+    const { data: transactions, error } = await supabase
+      .from('transactions')
+      .select('*, clients(name), cases(title), users!transactions_created_by_fkey(full_name)')
+      .eq('type', 'office')
+      .order('date', { ascending: false });
 
-    // Fetch all expenses to calculate totals
-    const { data: transactions } = await supabase
-      .from("transactions")
-      .select("amount, created_by")
-      .eq("type", "expense");
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const userExpenses = (transactions || []).reduce((acc, t_row) => {
-      if (t_row.created_by) {
-        acc[t_row.created_by] = (acc[t_row.created_by] || 0) + Number(t_row.amount);
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    let totalAdvances = 0;
-    let totalExpensesSum = 0;
-    let totalBalanceSum = 0;
-
-    const usersData = users
-      .filter(u => u.role !== 'superadmin')
-      .map(u => {
-        const expenses = userExpenses[u.id] || 0;
-        const advance = u.cash_advance || 0;
-        const balance = advance - expenses;
-
-        totalAdvances += advance;
-        totalExpensesSum += expenses;
-        totalBalanceSum += balance;
-
-        return {
-          ...u,
-          total_expenses: expenses,
-          balance: balance
-        };
-      });
-
-    if (usersData.length === 0) {
-      return new NextResponse(JSON.stringify({ error: 'NO_DATA' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    if (!transactions || transactions.length === 0) {
+      return NextResponse.json({ error: 'NO_DATA' }, { status: 200 });
     }
 
+    const totalAmount = transactions.reduce((sum, t) => sum + Number(t.amount), 0);
     const isRtl = locale === 'ar';
-    const reportTitle = t('CashAdvance.reportTitle') || 'Cash Advance Report';
 
     const logoPath = path.join(process.cwd(), 'public', 'logo.png');
     const logoSrc = fs.existsSync(logoPath)
       ? `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`
       : '';
 
-    const exportedAt = `${user.full_name} · ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+    const exportedAt = `${currentUser.full_name} · ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
 
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="${locale}" dir="${isRtl ? 'rtl' : 'ltr'}">
       <head>
         <meta charset="UTF-8">
-        <title>${reportTitle}</title>
+        <title>${t('Admin.officeTransactions')}</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -193,10 +171,7 @@ export async function GET(request: Request) {
             color: var(--ink-900);
             white-space: nowrap;
           }
-          .summary-value.income { color: #059669; }
-          .summary-value.expense { color: #dc2626; }
-          .summary-value.balance-positive { color: var(--ink-900); }
-          .summary-value.balance-negative { color: var(--ink-900); }
+          .summary-value.office { color: #dc2626; }
           
           table { 
             width: 100%; 
@@ -227,8 +202,7 @@ export async function GET(request: Request) {
             font-family: ${isRtl ? "'Cairo', sans-serif" : "'Inter', sans-serif"};
             white-space: nowrap;
           }
-          .payment { color: #059669; }
-          .expense { color: #dc2626; }
+          .office { color: #dc2626; }
           
           .footer {
             position: fixed;
@@ -254,23 +228,19 @@ export async function GET(request: Request) {
             </div>
           </div>
           <div class="title-area">
-            <h1>${reportTitle}</h1>
+            <h1>${t('Admin.officeTransactions')}</h1>
             <div class="meta"><span dir="ltr">${exportedAt}</span></div>
           </div>
         </div>
         
         <div class="summary-strip">
           <div class="summary-item">
-            <div class="summary-label">${t('CashAdvance.totalAdvances')}</div>
-            <div class="summary-value income">${totalAdvances.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${t('Admin.totalOffice')}</div>
+            <div class="summary-value office">-${totalAmount.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">${t('CashAdvance.totalUserExpenses')}</div>
-            <div class="summary-value expense">${totalExpensesSum.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">${t('CashAdvance.netBalance')}</div>
-            <div class="summary-value ${totalBalanceSum >= 0 ? 'balance-positive' : 'balance-negative'}">${totalBalanceSum.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${isRtl ? 'عدد المعاملات' : 'Transaction Count'}</div>
+            <div class="summary-value">${transactions.length}</div>
           </div>
         </div>
 
@@ -278,31 +248,26 @@ export async function GET(request: Request) {
           <thead>
             <tr>
               <th style="width: 40px; text-align: center;">#</th>
-              <th>${t('CashAdvance.userName')}</th>
-              <th>${t('CashAdvance.role')}</th>
-              <th class="amount-cell">${t('CashAdvance.currentAdvance')}</th>
-              <th class="amount-cell">${t('CashAdvance.totalExpenses')}</th>
-              <th class="amount-cell">${t('CashAdvance.currentBalance')}</th>
+              <th>${t('Transaction.columns.date')}</th>
+              <th>${t('Transaction.columns.createdBy')}</th>
+              <th>${t('Clients.columns.client')}</th>
+              <th>${t('Cases.title') || 'Case'}</th>
+              <th>${t('Transaction.columns.description')}</th>
+              <th class="amount-cell">${t('Transaction.columns.amount')}</th>
             </tr>
           </thead>
           <tbody>
-            ${usersData.map((u_row, index) => `
+            ${transactions.map((t_row, index) => `
               <tr>
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
-                <td>${escapeHtml(u_row.full_name || '')}</td>
-                <td>${t('Roles.' + u_row.role)}</td>
-                <td class="amount-cell">
-                  ${Number(u_row.cash_advance || 0).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
-                </td>
-                <td class="amount-cell expense">
-                  ${Number(u_row.total_expenses).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
-                </td>
-                <td class="amount-cell">
-                  ${Number(u_row.balance).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
-                </td>
+                <td>${new Date(t_row.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                <td>${escapeHtml(t_row.users?.full_name || '-')}</td>
+                <td>${escapeHtml(t_row.clients?.name || '-')}</td>
+                <td>${escapeHtml(t_row.cases?.title || '-')}</td>
+                <td>${escapeHtml(t_row.description)}</td>
+                <td class="amount-cell office">-${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>
               </tr>
             `).join('')}
-            ${usersData.length === 0 ? `<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('CashAdvance.noUsers')}</td></tr>` : ''}
           </tbody>
         </table>
 
@@ -313,14 +278,10 @@ export async function GET(request: Request) {
       </html>
     `;
 
-    // Puppeteer launch options
     let browser;
     if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
       const chromium = (await import('@sparticuz/chromium-min')).default;
       const puppeteer = (await import('puppeteer-core')).default;
-
-      // Register Arabic font for production
-
 
       const CHROMIUM_PACK_URL = 'https://github.com/Sparticuz/chromium/releases/download/v148.0.0/chromium-v148.0.0-pack.x64.tar';
 
@@ -342,7 +303,6 @@ export async function GET(request: Request) {
         headless: (chromium as any).headless,
       });
     } else {
-      // Local development
       const localPuppeteer = (await import('puppeteer')).default;
       browser = await localPuppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -353,8 +313,6 @@ export async function GET(request: Request) {
     const page = await browser.newPage();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' as any });
-
-    // Wait for fonts to be loaded
     await page.evaluateHandle('document.fonts.ready');
 
     const pdfBuffer = await page.pdf({
@@ -365,17 +323,16 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const generatedFilename = locale === 'ar' ? "تقرير_العهد_المالية.pdf" : "cash_advance_report.pdf";
-
+    const filename = isRtl ? 'تقرير_معاملات_المكتب.pdf' : 'office_transactions_report.pdf';
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(generatedFilename)}"`,
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
       },
     });
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error('Error generating office report PDF:', error);
     const msg = error instanceof Error ? error.message : String(error);
     return new NextResponse('Internal server error: ' + msg, { status: 500 });
   }

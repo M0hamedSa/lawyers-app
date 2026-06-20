@@ -248,8 +248,8 @@ export async function GET(request: Request) {
           }
           .summary-value.income { color: #059669; }
           .summary-value.expense { color: #dc2626; }
-          .summary-value.balance-positive { color: #059669; }
-          .summary-value.balance-negative { color: #dc2626; }
+          .summary-value.balance-positive { color: var(--ink-900); }
+          .summary-value.balance-negative { color: var(--ink-900); }
           
           table { 
             width: 100%; 
@@ -344,6 +344,7 @@ export async function GET(request: Request) {
               <th>${t('Transaction.columns.type')}</th>
               <th>${t('Transaction.columns.description')}</th>
               <th class="amount-cell">${t('Transaction.columns.amount')}</th>
+              <th>${t('Transaction.columns.createdBy')}</th>
             </tr>
           </thead>
           <tbody>
@@ -358,9 +359,10 @@ export async function GET(request: Request) {
                 <td class="amount-cell ${t_row.type === 'profit' ? 'profit' : (t_row.type === 'payment' ? 'payment' : 'expense')}">
                   ${t_row.type === 'profit' || t_row.type === 'payment' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
                 </td>
+                <td>${escapeHtml(t_row.users?.full_name || (t_row.type === 'profit' ? (locale === 'ar' ? 'النظام' : 'System') : '-'))}</td>
               </tr>
             `).join('')}
-            ${transactionsToReport.length === 0 ? `<tr><td colspan="${!caseId ? 7 : 6}" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults')}</td></tr>` : ''}
+            ${transactionsToReport.length === 0 ? `<tr><td colspan="${!caseId ? 8 : 7}" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults')}</td></tr>` : ''}
           </tbody>
         </table>
 

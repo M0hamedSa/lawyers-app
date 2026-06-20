@@ -13,7 +13,7 @@ type ClientRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  transactions: { amount: number; type: "payment" | "expense" | "profit"; created_by?: string }[];
+  transactions: { amount: number; type: "payment" | "expense" | "profit" | "office"; created_by?: string }[];
   creator?: { full_name: string } | null;
 };
 
@@ -27,7 +27,7 @@ export type CaseRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  transactions: { amount: number; type: "payment" | "expense"; created_by?: string }[];
+  transactions: { amount: number; type: "payment" | "expense" | "office"; created_by?: string }[];
 };
 
 type SummaryUser = { id: string; role: string };
@@ -43,7 +43,7 @@ function withSummary(client: ClientRow, currentUser: SummaryUser | null = null):
         acc.total_profit += Number(transaction.amount);
       } else {
         if (transaction.type === "payment") acc.total_payments += Number(transaction.amount);
-        if (transaction.type === "expense") acc.total_expenses += Number(transaction.amount);
+        if (transaction.type === "expense" || transaction.type === "office") acc.total_expenses += Number(transaction.amount);
       }
       return acc;
     },
@@ -77,7 +77,7 @@ export function caseWithSummary(c: CaseRow, currentUser: SummaryUser | null = nu
         return acc;
       }
       if (transaction.type === "payment") acc.total_payments += Number(transaction.amount);
-      if (transaction.type === "expense") acc.total_expenses += Number(transaction.amount);
+      if (transaction.type === "expense" || transaction.type === "office") acc.total_expenses += Number(transaction.amount);
       return acc;
     },
     { total_payments: 0, total_expenses: 0 },
@@ -316,7 +316,7 @@ export async function getUserFinancials() {
     .from("transactions")
     .select("amount")
     .eq("created_by", currentUser.id)
-    .eq("type", "expense");
+    .in("type", ["expense", "office"]);
 
   const totalExpenses = (transactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
   const cashAdvance = currentUser.cash_advance || 0;

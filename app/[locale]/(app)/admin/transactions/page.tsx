@@ -26,7 +26,7 @@ export default async function AdminTransactionsPage({
   const { query, date, type, client_id, case_id } = await searchParams;
   const user = await getCurrentUser();
 
-  if (user?.role !== "admin" && user?.role !== "superadmin") {
+  if (user?.role !== "superadmin") {
     redirect("/dashboard");
   }
 
@@ -54,7 +54,7 @@ export default async function AdminTransactionsPage({
   if (client_id) dbQuery = dbQuery.eq("client_id", client_id);
   if (case_id) dbQuery = dbQuery.eq("case_id", case_id);
   if (date) dbQuery = dbQuery.eq("date", date);
-  if (type === "payment" || type === "expense") {
+  if (type === "payment" || type === "expense" || type === "office") {
     dbQuery = dbQuery.eq("type", type);
   }
 
@@ -105,7 +105,7 @@ export default async function AdminTransactionsPage({
   };
 
   const totalPayments = transactions.reduce((acc, t) => acc + (t.type === "payment" ? Number(t.amount) : 0), 0);
-  const totalExpenses = transactions.reduce((acc, t) => acc + (t.type === "expense" ? Number(t.amount) : 0), 0);
+  const totalExpenses = transactions.reduce((acc, t) => acc + ((t.type === "expense" || t.type === "office") ? Number(t.amount) : 0), 0);
 
   return (
     <div className="space-y-6">

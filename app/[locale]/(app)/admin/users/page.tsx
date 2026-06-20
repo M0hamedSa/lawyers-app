@@ -20,7 +20,7 @@ export default async function AdminUsersPage({
   const currentUser = await getCurrentUser();
   const role = currentUser?.role;
   
-  if (role !== "admin" && role !== "superadmin") {
+  if (role !== "superadmin") {
     redirect({ href: "/dashboard", locale: locale as "en" | "ar" });
   }
 

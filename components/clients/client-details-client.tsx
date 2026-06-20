@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import type { Route } from "next";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Edit2, Download, Eye, FileText, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit2, Trash2, Download, Eye, FileText, Plus, Loader2 } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -72,7 +72,10 @@ export function ClientDetailsClient({
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<CaseForm>(emptyCase);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const deletedCasesRef = useRef(new Set<string>());
 
   useEffect(() => {
     const channel = supabase
@@ -85,8 +88,46 @@ export function ClientDetailsClient({
           table: "cases",
           filter: `client_id=eq.${client.id}`,
         },
-        () => {
-          router.refresh();
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const next = payload.new as Record<string, unknown>;
+            setCases((current) =>
+              current.some((c) => c.id === next.id)
+                ? current
+                : [
+                    {
+                      id: next.id as string,
+                      client_id: next.client_id as string,
+                      title: next.title as string,
+                      description: (next.description as string) ?? null,
+                      status: next.status as string,
+                      profit_amount: next.profit_amount != null ? Number(next.profit_amount) : null,
+                      created_by: (next.created_by as string) ?? null,
+                      created_at: next.created_at as string,
+                      updated_at: next.updated_at as string,
+                      total_payments: 0,
+                      total_expenses: 0,
+                      balance: 0,
+                    },
+                    ...current,
+                  ],
+            );
+          }
+          if (payload.eventType === "UPDATE") {
+            const next = payload.new as Record<string, unknown>;
+            setCases((current) =>
+              current.map((c) =>
+                c.id === next.id
+                  ? { ...c, title: next.title as string, description: (next.description as string) ?? null, status: next.status as string, profit_amount: next.profit_amount != null ? Number(next.profit_amount) : null, updated_at: next.updated_at as string }
+                  : c,
+              ),
+            );
+          }
+          if (payload.eventType === "DELETE") {
+            const previous = payload.old as Record<string, unknown>;
+            deletedCasesRef.current.add(previous.id as string);
+            setCases((current) => current.filter((c) => c.id !== previous.id));
+          }
         },
       )
       .subscribe();
@@ -94,11 +135,17 @@ export function ClientDetailsClient({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [client.id, router, supabase]);
+  }, [client.id, supabase]);
 
-  // Sync state if server re-fetches
+  // Sync state if server re-fetches (skip deleted IDs to prevent stale restore)
   useEffect(() => {
-    setCases(initialCases);
+    setCases((current) => {
+      const synced = initialCases.filter((c) => !deletedCasesRef.current.has(c.id));
+      if (synced.length !== current.length || synced.some((c, i) => c.id !== current[i]?.id)) {
+        return synced;
+      }
+      return current;
+    });
   }, [initialCases]);
 
   const totals = cases.reduce(
@@ -180,6 +227,26 @@ export function ClientDetailsClient({
     setForm(emptyCase);
     setModalOpen(false);
     router.refresh();
+  }
+
+  async function deleteCase(id: string) {
+    setConfirmDelete(null);
+    setDeleting(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/cases/${id}`, { method: "DELETE" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error || "Failed to delete");
+        return;
+      }
+      deletedCasesRef.current.add(id);
+      setCases((current) => current.filter((c) => c.id !== id));
+    } catch {
+      setError("Failed to delete case");
+    } finally {
+      setDeleting(null);
+    }
   }
 
   return (
@@ -284,7 +351,7 @@ export function ClientDetailsClient({
           />
       ) : null}
       {activeTab === "cases" ? (
-        <CasesTab cases={cases} userRole={userRole} client={client} onEdit={(c) => {
+        <CasesTab cases={cases} userRole={userRole} client={client} currentUserId={currentUser?.id} onEdit={(c) => {
           setForm({
             id: c.id,
             title: c.title,
@@ -293,7 +360,7 @@ export function ClientDetailsClient({
             profit_amount: c.profit_amount ? String(c.profit_amount) : ""
           });
           setModalOpen(true);
-        }} />
+        }} onDelete={(id) => setConfirmDelete(id)} deleting={deleting} />
       ) : null}
       {activeTab === "files" ? <FilesTab clientId={client.id} /> : null}
 
@@ -308,7 +375,7 @@ export function ClientDetailsClient({
             />
           </Field>
           
-          {client.profit_type === "per_case" && (
+          {client.profit_type === "per_case" && userRole === "superadmin" && (
             <Field label={tCases("form.profitAmount")}>
               <input
                 type="number"
@@ -356,6 +423,39 @@ export function ClientDetailsClient({
             </ActionButton>
           </div>
         </form>
+      </Modal>
+
+      <Modal title={tCases("deleteCase")} open={!!confirmDelete} onClose={() => setConfirmDelete(null)}>
+        <div className="space-y-5">
+          <p className="text-body-md text-ink-700 dark:text-ink-300">
+            {tCases("deleteConfirm")}
+          </p>
+          {error && (
+            <div className="rounded-md border border-error-200 bg-error-50 p-3 text-body-sm text-error-700 dark:border-error-900/50 dark:bg-error-950/40 dark:text-error-200">
+              {error}
+            </div>
+          )}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(null)}
+              className="border border-ink-200 bg-white text-ink-800 rounded-md h-10 px-[18px] text-btn"
+            >
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={deleting === confirmDelete}
+              onClick={() => deleteCase(confirmDelete!)}
+              className="bg-error-600 hover:bg-error-700 text-white rounded-md h-10 px-[18px] text-btn inline-flex items-center gap-2"
+            >
+              {deleting === confirmDelete ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              {tCommon("delete")}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
@@ -522,12 +622,17 @@ function OverviewTab({
   );
 }
 
-function CasesTab({ cases, userRole, client, onEdit }: { cases: CaseWithSummary[], userRole: string | null, client: ClientWithSummary, onEdit: (c: CaseWithSummary) => void }) {
+function CasesTab({ cases, userRole, client, currentUserId, onEdit, onDelete, deleting }: { cases: CaseWithSummary[], userRole: string | null, client: ClientWithSummary, currentUserId?: string, onEdit: (c: CaseWithSummary) => void, onDelete: (id: string) => void, deleting: string | null }) {
   const t = useTranslations("Cases");
   const tClients = useTranslations("Clients");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
   const showProfit = userRole === "superadmin" && client.profit_type === "per_case";
+
+  function canModify(c: CaseWithSummary) {
+    if (userRole === "superadmin") return true;
+    return c.created_by === currentUserId;
+  }
 
   return (
     <FadeInBox>
@@ -595,23 +700,36 @@ function CasesTab({ cases, userRole, client, onEdit }: { cases: CaseWithSummary[
                   ),
                 },
               ] : []),
-              ...(userRole === "superadmin" || userRole === "admin" ? [
-                {
-                  key: "actions",
-                  header: "",
-                  className: "text-end",
-                  cell: (c: CaseWithSummary) => (
-                    <button
-                      type="button"
-                      onClick={() => onEdit(c)}
-                      className="inline-flex size-9 items-center justify-center rounded-md border border-ink-200 hover:bg-ink-50 dark:border-ink-600 dark:hover:bg-ink-800"
-                      aria-label={tCommon("edit")}
-                    >
-                      <Edit2 className="size-4" aria-hidden />
-                    </button>
-                  ),
+              {
+                key: "actions",
+                header: "",
+                className: "text-end",
+                cell: (c: CaseWithSummary) => {
+                  if (!canModify(c)) return null;
+                  const isDeleting = deleting === c.id;
+                  return (
+                    <div className="flex justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(c)}
+                        className="inline-flex size-8 items-center justify-center rounded-md border border-ink-200 text-ink-500 hover:bg-ink-50 hover:text-accent-600 dark:border-ink-700 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-accent-400"
+                        aria-label={tCommon("edit")}
+                      >
+                        <Edit2 className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isDeleting}
+                        onClick={() => onDelete(c.id)}
+                        className="inline-flex size-8 items-center justify-center rounded-md border border-ink-200 text-ink-500 hover:bg-error-50 hover:text-error-600 dark:border-ink-700 dark:text-ink-400 dark:hover:bg-error-900/20 dark:hover:text-error-400"
+                        aria-label={tCommon("delete")}
+                      >
+                        {isDeleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                      </button>
+                    </div>
+                  );
                 },
-              ] : []),
+              },
             ]}
           />
         </CardContent>

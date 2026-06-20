@@ -193,8 +193,8 @@ export async function GET(request: Request) {
           }
           .summary-value.income { color: #059669; }
           .summary-value.expense { color: #dc2626; }
-          .summary-value.balance-positive { color: #059669; }
-          .summary-value.balance-negative { color: #dc2626; }
+          .summary-value.balance-positive { color: var(--ink-900); }
+          .summary-value.balance-negative { color: var(--ink-900); }
           
           table { 
             width: 100%; 

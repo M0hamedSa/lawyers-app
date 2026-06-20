@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Edit2, Trash2 } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -74,30 +74,34 @@ export function CaseDetailsClient({
   const locale = useLocale();
 
   const userRole = currentUser?.role || null;
-  const filteredInitialTransactions = useMemo(
-    () => userRole === "superadmin"
-      ? initialTransactions
-      : initialTransactions.filter(t => t.created_by === currentUser?.id && t.type === "expense"),
-    [initialTransactions, userRole, currentUser?.id]
-  );
-
+  const userId = currentUser?.id;
   const [activeTab, setActiveTab] = useState<Tab>("finance");
-  const [transactions, setTransactions] = useState<TransactionWithUser[]>(filteredInitialTransactions);
+  const [transactions, setTransactions] = useState<TransactionWithUser[]>(initialTransactions);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<TransactionForm>({
     ...emptyTransaction,
     type: "expense"
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const deletedTransactionsRef = useRef(new Set<string>());
   const [caseStatus] = useState(caseData.status);
   // Lock all transactions if the case is closed OR the client is inactive
   const isLocked = caseStatus === "closed" || client.status === "inactive";
 
-  // Sync state if server re-fetches
+  // Sync state if server re-fetches (skip deleted IDs to prevent stale restore)
   useEffect(() => {
-    setTransactions(filteredInitialTransactions);
-  }, [filteredInitialTransactions]);
+    setTransactions((current) => {
+      const synced = initialTransactions.filter((t) => !deletedTransactionsRef.current.has(t.id));
+      if (synced.length !== current.length || synced.some((t, i) => t.id !== current[i]?.id)) {
+        return synced;
+      }
+      return current;
+    });
+  }, [initialTransactions]);
 
   useEffect(() => {
     const channel = supabase
@@ -110,43 +114,34 @@ export function CaseDetailsClient({
           table: "transactions",
           filter: `case_id=eq.${caseData.id}`,
         },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            const next = payload.new as LedgerTransaction;
-            if (userRole !== "superadmin") {
-              if (next.created_by !== currentUser?.id || next.type !== "expense") return;
+          (payload) => {
+            if (payload.eventType === "INSERT") {
+              const next = payload.new as LedgerTransaction;
+              const withUser: TransactionWithUser = {
+                ...next,
+                users: { full_name: currentUser?.full_name ?? "" },
+              };
+              setTransactions((current) =>
+                current.some((transaction) => transaction.id === next.id)
+                  ? current
+                  : [withUser, ...current],
+              );
             }
-            // Attach current user's name so "Created By" column renders correctly
-            const withUser: TransactionWithUser = {
-              ...next,
-              users: { full_name: currentUser?.full_name ?? "" },
-            };
-            setTransactions((current) =>
-              current.some((transaction) => transaction.id === next.id)
-                ? current
-                : [withUser, ...current],
-            );
-          }
 
-          if (payload.eventType === "UPDATE") {
-            const next = payload.new as LedgerTransaction;
-            if (userRole !== "superadmin" && next.type !== "expense") {
-              setTransactions((current) => current.filter((t) => t.id !== next.id));
-              return;
+            if (payload.eventType === "UPDATE") {
+              const next = payload.new as LedgerTransaction;
+              setTransactions((current) =>
+                current.map((transaction) => (transaction.id === next.id ? next : transaction)),
+              );
             }
-            setTransactions((current) =>
-              current.map((transaction) => (transaction.id === next.id ? next : transaction)),
-            );
-          }
 
           if (payload.eventType === "DELETE") {
             const previous = payload.old as Pick<LedgerTransaction, "id">;
+            deletedTransactionsRef.current.add(previous.id);
             setTransactions((current) =>
               current.filter((transaction) => transaction.id !== previous.id),
             );
           }
-
-          router.refresh();
         },
       )
       .subscribe();
@@ -154,27 +149,74 @@ export function CaseDetailsClient({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [caseData.id, router, supabase, userRole, currentUser]);
+  }, [caseData.id, supabase, currentUser]);
 
   const totals = transactions.reduce(
     (acc, transaction) => {
       if (transaction.type === "payment") acc.payments += Number(transaction.amount);
-      if (transaction.type === "expense") acc.expenses += Number(transaction.amount);
+      if (transaction.type === "expense" || transaction.type === "office") acc.expenses += Number(transaction.amount);
       return acc;
     },
     { payments: 0, expenses: 0 },
   );
 
+  const myExpenses = transactions
+    .filter((t) => (t.type === "expense" || t.type === "office") && t.created_by === userId)
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
   let balance = 0;
   let displayPayments = 0;
-  const displayExpenses = totals.expenses;
+  let displayMyExpenses = 0;
+  const displayTotalExpenses = totals.expenses;
 
   if (userRole === "superadmin") {
     displayPayments = totals.payments;
-    balance = displayPayments - displayExpenses;
+    balance = displayPayments - displayTotalExpenses;
   } else {
     displayPayments = currentUser?.cash_advance || 0;
-    balance = userGlobalBalance !== undefined ? userGlobalBalance : displayPayments - displayExpenses;
+    displayMyExpenses = myExpenses;
+    balance = userGlobalBalance !== undefined ? userGlobalBalance : displayPayments - myExpenses;
+  }
+
+  function openEditModal(transaction: TransactionWithUser) {
+    setForm({
+      type: transaction.type,
+      amount: String(transaction.amount),
+      description: transaction.description,
+      voucher_type: transaction.voucher_type,
+      date: transaction.date,
+    });
+    setEditingId(transaction.id);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm({
+      ...emptyTransaction,
+      type: "expense",
+    });
+  }
+
+  async function deleteTransaction(id: string) {
+    setConfirmDelete(null);
+    setDeleting(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        setError(err.error || "Failed to delete");
+        return;
+      }
+      deletedTransactionsRef.current.add(id);
+      setTransactions((current) => current.filter((t) => t.id !== id));
+    } catch {
+      setError("Failed to delete transaction");
+    } finally {
+      setDeleting(null);
+    }
   }
 
   async function saveTransaction(event: React.FormEvent<HTMLFormElement>) {
@@ -182,8 +224,7 @@ export function CaseDetailsClient({
     setSubmitting(true);
     setError(null);
 
-    // Block if locked
-    if (isLocked) {
+    if (!editingId && isLocked) {
       setSubmitting(false);
       setError(tCases("lockedCase") || "This case or client is closed. Transactions are not allowed.");
       return;
@@ -193,6 +234,36 @@ export function CaseDetailsClient({
     if (!Number.isFinite(amount) || amount <= 0) {
       setSubmitting(false);
       setError("Amount must be greater than zero.");
+      return;
+    }
+
+    if (editingId) {
+      const res = await fetch(`/api/transactions/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: form.type,
+          amount,
+          description: form.description.trim(),
+          voucher_type: form.voucher_type,
+          date: form.date,
+        }),
+      });
+
+      setSubmitting(false);
+
+      if (!res.ok) {
+        const err = await res.json();
+        setError(err.error || "Failed to update");
+        return;
+      }
+
+      const updated: TransactionWithUser = await res.json();
+      setTransactions((current) =>
+        current.map((t) => (t.id === updated.id ? updated : t)),
+      );
+      closeModal();
+      router.refresh();
       return;
     }
 
@@ -228,11 +299,7 @@ export function CaseDetailsClient({
     }
 
     setTransactions((current) => [data, ...current]);
-    setForm({
-      ...emptyTransaction,
-      type: "expense"
-    });
-    setModalOpen(false);
+    closeModal();
     router.refresh();
   }
 
@@ -299,7 +366,10 @@ export function CaseDetailsClient({
         {userRole === "superadmin" && (
           <FinanceMetric label={t("totalPayments") || "Total Payments"} value={formatCurrency(totals.payments, locale)} rawValue={totals.payments} tone="payment" locale={locale} />
         )}
-        <FinanceMetric label={userRole === "superadmin" ? t("totalExpenses") : tCommon("myExpenses")} value={formatCurrency(displayExpenses, locale)} rawValue={displayExpenses} tone="expense" locale={locale} />
+        <FinanceMetric label={t("totalExpenses")} value={formatCurrency(displayTotalExpenses, locale)} rawValue={displayTotalExpenses} tone="expense" locale={locale} />
+        {userRole !== "superadmin" && (
+          <FinanceMetric label={tCommon("myExpenses")} value={formatCurrency(displayMyExpenses, locale)} rawValue={displayMyExpenses} tone="expense" locale={locale} />
+        )}
         <FinanceMetric label={t("currentBalance")} value={formatCurrency(balance, locale)} rawValue={balance} tone="balance" locale={locale} />
         {userRole === "superadmin" && client.profit_type === "per_case" && caseData.profit_amount ? (
           <FinanceMetric
@@ -347,7 +417,14 @@ export function CaseDetailsClient({
 
       {activeTab === "finance" ? (
         <FadeInBox delay={0.2}>
-        <FinanceTab transactions={transactions} userRole={userRole} />
+        <FinanceTab
+          transactions={transactions}
+          userRole={userRole}
+          currentUserId={userId}
+          onEdit={openEditModal}
+           onDelete={(id) => setConfirmDelete(id)}
+          deleting={deleting}
+        />
         </FadeInBox>
       ) : null}
       {activeTab === "files" ? (
@@ -356,15 +433,15 @@ export function CaseDetailsClient({
         </FadeInBox>
       ) : null}
 
-      <Modal title={t("addTransaction")} open={modalOpen} onClose={() => setModalOpen(false)}>
+      <Modal title={editingId ? tTrans("editTransaction") : t("addTransaction")} open={modalOpen} onClose={closeModal}>
         <form onSubmit={saveTransaction} className="space-y-4 [&_input]:w-full [&_select]:w-full">
 
-          {userRole === "superadmin" && (
-            <div className="space-y-1.5">
-              <label className="text-title-sm text-ink-800 dark:text-ink-100">
-                {tTrans("columns.type")}
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1.5">
+            <label className="text-title-sm text-ink-800 dark:text-ink-100">
+              {tTrans("columns.type")}
+            </label>
+            <div className={cn("grid gap-2", userRole === "superadmin" ? "grid-cols-3" : "grid-cols-2")}>
+              {userRole === "superadmin" && (
                 <label
                   className={cn(
                     "flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition",
@@ -383,27 +460,45 @@ export function CaseDetailsClient({
                   />
                   {tCommon("payment")}
                 </label>
-                <label
-                  className={cn(
-                    "flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition",
-                    form.type === "expense"
-                      ? "border-error-500 bg-error-50 text-error-700 dark:border-error-500/50 dark:bg-error-500/10 dark:text-error-400"
-                      : "border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800",
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="type"
-                    value="expense"
-                    className="sr-only"
-                    checked={form.type === "expense"}
-                    onChange={() => setForm((c) => ({ ...c, type: "expense" }))}
-                  />
-                  {tCommon("expense")}
-                </label>
-              </div>
+              )}
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition",
+                  form.type === "expense"
+                    ? "border-error-500 bg-error-50 text-error-700 dark:border-error-500/50 dark:bg-error-500/10 dark:text-error-400"
+                    : "border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="type"
+                  value="expense"
+                  className="sr-only"
+                  checked={form.type === "expense"}
+                  onChange={() => setForm((c) => ({ ...c, type: "expense" }))}
+                />
+                {tCommon("expense")}
+              </label>
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition",
+                  form.type === "office"
+                    ? "border-accent-500 bg-accent-50 text-accent-700 dark:border-accent-500/50 dark:bg-accent-500/10 dark:text-accent-400"
+                    : "border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="type"
+                  value="office"
+                  className="sr-only"
+                  checked={form.type === "office"}
+                  onChange={() => setForm((c) => ({ ...c, type: "office" }))}
+                />
+                {tCommon("office")}
+              </label>
             </div>
-          )}
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={tTrans("columns.amount")}>
@@ -455,7 +550,7 @@ export function CaseDetailsClient({
           )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <ActionButton type="button" variant="secondary" onClick={() => setModalOpen(false)}>
+            <ActionButton type="button" variant="secondary" onClick={closeModal}>
               {tCommon("cancel")}
             </ActionButton>
             <ActionButton type="submit" disabled={submitting}>
@@ -470,6 +565,39 @@ export function CaseDetailsClient({
             </ActionButton>
           </div>
         </form>
+      </Modal>
+
+      <Modal title={tTrans("deleteTransaction")} open={!!confirmDelete} onClose={() => setConfirmDelete(null)}>
+        <div className="space-y-5">
+          <p className="text-body-md text-ink-700 dark:text-ink-300">
+            {tTrans("deleteConfirm")}
+          </p>
+          {error && (
+            <div className="rounded-md border border-error-200 bg-error-50 p-3 text-body-sm text-error-700 dark:border-error-900/50 dark:bg-error-950/40 dark:text-error-200">
+              {error}
+            </div>
+          )}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(null)}
+              className="border border-ink-200 bg-white text-ink-800 rounded-md h-10 px-[18px] text-btn"
+            >
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={deleting === confirmDelete}
+              onClick={() => deleteTransaction(confirmDelete!)}
+              className="bg-error-600 hover:bg-error-700 text-white rounded-md h-10 px-[18px] text-btn inline-flex items-center gap-2"
+            >
+              {deleting === confirmDelete ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              {tCommon("delete")}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
@@ -501,10 +629,30 @@ function FinanceMetric({ label, value, tone, rawValue, locale = "en-US" }: { lab
   );
 }
 
-function FinanceTab({ transactions, userRole }: { transactions: TransactionWithUser[]; userRole: string | null }) {
+function FinanceTab({
+  transactions,
+  userRole,
+  currentUserId,
+  onEdit,
+  onDelete,
+  deleting,
+}: {
+  transactions: TransactionWithUser[];
+  userRole: string | null;
+  currentUserId?: string;
+  onEdit: (item: TransactionWithUser) => void;
+  onDelete: (id: string) => void;
+  deleting: string | null;
+}) {
   const t = useTranslations("ClientDetails");
   const tTrans = useTranslations("Transaction");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
+
+  function canModify(item: TransactionWithUser) {
+    if (userRole === "superadmin") return true;
+    return item.created_by === currentUserId;
+  }
 
   return (
     <Card>
@@ -531,10 +679,12 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
                     "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider sm:text-xs",
                     item.type === "payment"
                       ? "bg-success-50 text-success-700 dark:bg-success-950/40 dark:text-success-400"
-                      : "bg-error-100 text-error-800 dark:bg-error-900/30 dark:text-error-400",
+                      : item.type === "office"
+                        ? "bg-accent-50 text-accent-700 dark:bg-accent-950/40 dark:text-accent-400"
+                        : "bg-error-100 text-error-800 dark:bg-error-900/30 dark:text-error-400",
                   )}
                 >
-                  {item.type === "payment" ? tTrans("vouchers." + item.voucher_type) : tTrans("vouchers.other")}
+                  {item.type === "payment" ? tTrans("vouchers." + item.voucher_type) : tCommon(item.type)}
                 </span>
               ),
             },
@@ -553,7 +703,7 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
                     item.type === "payment" ? "text-success-700 dark:text-success-400" : "text-error-700 dark:text-error-400",
                   )}
                 >
-                  {item.type === "expense" ? "-" : "+"}
+                  {item.type === "payment" ? "+" : "-"}
                   {formatCurrency(item.amount, locale)}
                 </span>
               ),
@@ -571,6 +721,36 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
                   },
                 ]
               : []),
+            {
+              key: "actions",
+              header: "",
+              className: "text-end",
+              cell: (item: TransactionWithUser) => {
+                if (!canModify(item)) return null;
+                const isDeleting = deleting === item.id;
+                return (
+                  <div className="flex justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(item)}
+                      className="inline-flex size-8 items-center justify-center rounded-md border border-ink-200 text-ink-500 hover:bg-ink-50 hover:text-accent-600 dark:border-ink-700 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-accent-400"
+                      aria-label={tCommon("edit")}
+                    >
+                      <Edit2 className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isDeleting}
+                      onClick={() => onDelete(item.id)}
+                      className="inline-flex size-8 items-center justify-center rounded-md border border-ink-200 text-ink-500 hover:bg-error-50 hover:text-error-600 dark:border-ink-700 dark:text-ink-400 dark:hover:bg-error-900/20 dark:hover:text-error-400"
+                      aria-label={tCommon("delete")}
+                    >
+                      {isDeleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                    </button>
+                  </div>
+                );
+              },
+            },
           ]}
         />
       </CardContent>

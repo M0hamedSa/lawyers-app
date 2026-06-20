@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Link } from "@/i18n/routing";
 import { encodeId } from "@/lib/id-utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,11 +8,12 @@ import { DataTable } from "@/components/ui/data-table";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Route } from "next";
+import { Trash2, Loader2 } from "lucide-react";
 
 type Transaction = {
   id: string;
   date: string;
-  type: "payment" | "expense" | "profit";
+  type: "payment" | "expense" | "profit" | "office";
   amount: number;
   description: string;
   client_id: string;
@@ -22,7 +24,7 @@ type Transaction = {
 };
 
 export function TransactionsTable({
-  transactions,
+  transactions: initialTransactions,
   locale,
   t,
   tCommon,
@@ -38,11 +40,36 @@ export function TransactionsTable({
   tCases: Record<string, string>;
   tClients: Record<string, string>;
 }) {
+  const [data, setData] = useState(initialTransactions);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  useEffect(() => {
+    setData(initialTransactions);
+  }, [initialTransactions]);
+
+  async function handleDelete(id: string) {
+    if (!window.confirm(tAdmin.title === "المسؤول" ? "هل أنت متأكد من حذف هذه المعاملة؟" : "Delete this transaction?")) return;
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        console.error(err.error);
+        return;
+      }
+      setData((current) => current.filter((item) => item.id !== id));
+    } catch {
+      console.error("Failed to delete");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   return (
     <Card>
       <CardContent>
         <DataTable
-          data={transactions}
+          data={data}
           empty={t.noResults}
           getRowKey={(t: Transaction) => t.id}
           columns={[
@@ -99,6 +126,13 @@ export function TransactionsTable({
                     </span>
                   );
                 }
+                if (t.type === "office") {
+                  return (
+                    <span className="inline-flex rounded-md px-2 py-1 text-xs font-semibold capitalize bg-accent-50 text-accent-800 dark:bg-accent-950/50 dark:text-accent-300">
+                      {tCommon.office}
+                    </span>
+                  );
+                }
                 return (
                   <span
                     className={cn(
@@ -126,7 +160,6 @@ export function TransactionsTable({
                 const isProfit = t.type === "profit";
                 const isPayment = t.type === "payment";
                 const isPositive = isPayment || isProfit;
-                
                 return (
                   <span
                     className={cn(
@@ -141,6 +174,26 @@ export function TransactionsTable({
                     {isPositive ? "+" : "-"}
                     {formatCurrency(Number(t.amount), locale)}
                   </span>
+                );
+              },
+            },
+            {
+              key: "actions",
+              header: "",
+              className: "text-end",
+              cell: (t: Transaction) => {
+                if (t.type === "profit") return null;
+                const isDeleting = deleting === t.id;
+                return (
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={() => handleDelete(t.id)}
+                    className="inline-flex size-8 items-center justify-center rounded-md border border-ink-200 text-ink-500 hover:bg-error-50 hover:text-error-600 dark:border-ink-700 dark:text-ink-400 dark:hover:bg-error-900/20 dark:hover:text-error-400"
+                    aria-label="Delete"
+                  >
+                    {isDeleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                  </button>
                 );
               },
             },

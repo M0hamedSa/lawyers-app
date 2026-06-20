@@ -13,6 +13,7 @@
     "description": "Description",
     "payment": "Payment",
     "expense": "Expense",
+    "office": "Office",
     "myFinancials": "My Financials",
     "cashAdvance": "Cash Advance",
     "myExpenses": "My Expenses",
@@ -188,6 +189,9 @@
   },
   "Transaction": {
     "saveTransaction": "Save transaction",
+    "editTransaction": "Edit transaction",
+    "deleteTransaction": "Delete transaction",
+    "deleteConfirm": "Are you sure you want to delete this transaction?",
     "voucherType": "Voucher type",
     "columns": {
       "date": "Date",
@@ -221,7 +225,10 @@
     "cashAdvances": "Cash Advances",
     "exportReport": "Export Report",
     "firmReportTitle": "Firm Dashboard Summary Report",
-    "myReportTitle": "My Dashboard Summary Report"
+    "myReportTitle": "My Dashboard Summary Report",
+    "officeTransactions": "Office Transactions",
+    "officeTransactionsLog": "All Office Transactions",
+    "totalOffice": "Total Office Amount"
   },
   "CashAdvance": {
     "title": "Cash Advance Management",

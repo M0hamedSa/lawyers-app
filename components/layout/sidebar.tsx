@@ -5,23 +5,23 @@ import gsap from "gsap";
 import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
-import { BriefcaseBusiness, LayoutDashboard, History, Users } from "lucide-react";
+import { BriefcaseBusiness, LayoutDashboard, History, Users, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
   href: string;
   translationKey: string;
   icon: ComponentType<{ className?: string }>;
-  adminOnly?: boolean;
   superadminOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
   { href: "/dashboard", translationKey: "Dashboard.title", icon: LayoutDashboard },
   { href: "/clients", translationKey: "Clients.title", icon: BriefcaseBusiness },
-  { href: "/admin/transactions", translationKey: "Admin.allTransactions", icon: History, adminOnly: true },
-  { href: "/admin/users", translationKey: "Admin.manageUsers", icon: Users, adminOnly: true },
-  { href: "/admin/cash-advance", translationKey: "Admin.cashAdvances", icon: BriefcaseBusiness, adminOnly: true, superadminOnly: true },
+  { href: "/admin/transactions", translationKey: "Admin.allTransactions", icon: History, superadminOnly: true },
+  { href: "/admin/users",        translationKey: "Admin.manageUsers",    icon: Users,           superadminOnly: true },
+  { href: "/admin/cash-advance", translationKey: "Admin.cashAdvances",   icon: BriefcaseBusiness, superadminOnly: true },
+  { href: "/admin/office",       translationKey: "Admin.officeTransactions", icon: Building2,     superadminOnly: true },
 ];
 
 export function Sidebar({
@@ -54,6 +54,7 @@ export function Sidebar({
     if (key === "Admin.allTransactions") return tAdmin("allTransactions");
     if (key === "Admin.manageUsers") return tAdmin("manageUsers");
     if (key === "Admin.cashAdvances") return tAdmin("cashAdvances");
+    if (key === "Admin.officeTransactions") return tAdmin("officeTransactions");
     return key;
   }
 
@@ -84,7 +85,6 @@ export function Sidebar({
         {navItems
           .filter((item) => {
             if (item.superadminOnly && userRole !== "superadmin") return false;
-            if (item.adminOnly && userRole !== "admin" && userRole !== "superadmin") return false;
             return true;
           })
           .map((item) => {

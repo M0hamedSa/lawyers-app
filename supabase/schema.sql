@@ -19,7 +19,14 @@ end $$;
 
 do $$
 begin
-  create type public.transaction_type as enum ('payment', 'expense', 'profit');
+  create type public.transaction_type as enum ('payment', 'expense', 'profit', 'office');
+exception
+  when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter type public.transaction_type add value if not exists 'office';
 exception
   when duplicate_object then null;
 end $$;
@@ -290,6 +297,27 @@ using (
   )
 );
 
+-- Cases policies
+
+drop policy if exists "Superadmins can delete cases" on public.cases;
+create policy "Superadmins can delete cases"
+on public.cases for delete
+to authenticated
+using (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role = 'superadmin'
+  )
+);
+
+drop policy if exists "Users can delete own cases" on public.cases;
+create policy "Users can delete own cases"
+on public.cases for delete
+to authenticated
+using (
+  created_by = auth.uid()
+);
+
 -- Clients policies
 drop policy if exists "Users can read assigned clients" on public.clients;
 create policy "Users can read assigned clients"
@@ -379,7 +407,8 @@ to authenticated
 with check (
   created_by = auth.uid()
   and (
-    exists (
+    type = 'office'
+    or exists (
       select 1 from public.users u
       where u.id = auth.uid() and u.role in ('admin', 'superadmin')
     )
@@ -405,6 +434,10 @@ with check (
   exists (
     select 1 from public.users u
     where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+  or (
+    type = 'office'
+    and created_by = auth.uid()
   )
   or (
     created_by = auth.uid()

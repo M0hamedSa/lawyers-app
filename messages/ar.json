@@ -13,6 +13,7 @@
     "description": "الوصف",
     "payment": "دفعة",
     "expense": "مصروف",
+    "office": "مكتب",
     "myFinancials": "حساباتي المالية",
     "cashAdvance": "العهدة المالية",
     "myExpenses": "مصروفاتي",
@@ -188,6 +189,9 @@
   },
   "Transaction": {
     "saveTransaction": "حفظ المعاملة",
+    "editTransaction": "تعديل المعاملة",
+    "deleteTransaction": "حذف المعاملة",
+    "deleteConfirm": "هل أنت متأكد من حذف هذه المعاملة؟",
     "voucherType": "نوع السند",
     "columns": {
       "date": "التاريخ",
@@ -221,7 +225,10 @@
     "cashAdvances": "العهد المالية",
     "exportReport": "تصدير التقرير",
     "firmReportTitle": "تقرير ملخص لوحة التحكم للشركة",
-    "myReportTitle": "تقرير ملخص لوحة التحكم الخاصة بي"
+    "myReportTitle": "تقرير ملخص لوحة التحكم الخاصة بي",
+    "officeTransactions": "معاملات المكتب",
+    "officeTransactionsLog": "سجل معاملات المكتب",
+    "totalOffice": "إجمالي معاملات المكتب"
   },
   "CashAdvance": {
     "title": "إدارة العهد المالية",
