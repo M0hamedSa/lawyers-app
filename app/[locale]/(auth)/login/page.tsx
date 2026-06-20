@@ -8,6 +8,7 @@ import Image from "next/image";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, inputClassName } from "@/components/ui/field";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { signInAction } from "./actions";
 
 export default function LoginPage() {
@@ -33,7 +34,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-ink-950">
+    <div className="relative flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-ink-950">
+      <div className="absolute right-4 top-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center">
           <div className="flex size-24 items-center justify-center shrink-0">
