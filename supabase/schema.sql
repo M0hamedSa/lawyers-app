@@ -19,7 +19,7 @@ end $$;
 
 do $$
 begin
-  create type public.transaction_type as enum ('payment', 'expense');
+  create type public.transaction_type as enum ('payment', 'expense', 'profit');
 exception
   when duplicate_object then null;
 end $$;
@@ -126,6 +126,7 @@ select
   c.id as client_id,
   coalesce(sum(t.amount) filter (where t.type = 'payment'), 0)::numeric(12, 2) as total_payments,
   coalesce(sum(t.amount) filter (where t.type = 'expense'), 0)::numeric(12, 2) as total_expenses,
+  coalesce(sum(t.amount) filter (where t.type = 'profit'), 0)::numeric(12, 2) as total_profit,
   (
     coalesce(sum(t.amount) filter (where t.type = 'payment'), 0)
     - coalesce(sum(t.amount) filter (where t.type = 'expense'), 0)
@@ -281,14 +282,23 @@ create policy "Users can read transactions of assigned clients"
 on public.transactions for select
 to authenticated
 using (
-  exists (
-    select 1 from public.users u
-    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  (
+    exists (
+      select 1 from public.users u
+      where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+    )
+    or
+    exists (
+      select 1 from public.client_access ca
+      where ca.client_id = public.transactions.client_id and ca.user_id = auth.uid()
+    )
   )
-  or
-  exists (
-    select 1 from public.client_access ca
-    where ca.client_id = public.transactions.client_id and ca.user_id = auth.uid()
+  and (
+    type != 'profit'
+    or exists (
+      select 1 from public.users u
+      where u.id = auth.uid() and u.role = 'superadmin'
+    )
   )
 );
 

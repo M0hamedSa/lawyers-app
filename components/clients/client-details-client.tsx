@@ -223,11 +223,12 @@ export function ClientDetailsClient({
         )}
         <FinanceMetric label={userRole === "superadmin" ? t("totalExpenses") : tCommon("myExpenses")} value={formatCurrency(displayExpenses, locale)} rawValue={displayExpenses} tone="expense" locale={locale} />
         <FinanceMetric label={t("currentBalance")} value={formatCurrency(balance, locale)} rawValue={balance} tone="balance" locale={locale} />
-        {userRole === "superadmin" && client.profit_type === "monthly" && client.profit ? (
-          <FinanceMetric 
-            label={t("monthlyProfit") || "Monthly Profit"} 
-            value={formatCurrency(client.profit, locale) + (client.monthly_payment_day ? ` (يوم ${client.monthly_payment_day})` : "")} 
-            tone="balance" 
+        {userRole === "superadmin" && client.profit_type === "monthly" ? (
+          <FinanceMetric
+            label={t("totalProfit") || "Total Profit"}
+            value={formatCurrency(client.total_profit, locale)}
+            rawValue={client.total_profit}
+            tone="payment"
             locale={locale}
           />
         ) : null}
@@ -454,6 +455,17 @@ function OverviewTab({
                 </dd>
               </div>
             </div>
+
+            {/* Monthly Profit Row */}
+            {userRole === "superadmin" && client.profit_type === "monthly" && (
+              <div className="flex justify-between items-center px-4 py-4 sm:px-6">
+                <dt className="text-ink-500 dark:text-ink-400">{t("monthlyProfit") || "Monthly Profit"}</dt>
+                <dd className="font-semibold tabular-nums text-ink-800 dark:text-ink-100">
+                  {formatCurrency(client.profit || 0, locale)}
+                  {client.monthly_payment_day ? ` (يوم ${client.monthly_payment_day})` : ""}
+                </dd>
+              </div>
+            )}
 
             {/* Row 4: Phone */}
             {client.phone && (

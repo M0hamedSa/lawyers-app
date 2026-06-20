@@ -119,6 +119,7 @@ export function ClientsPageClient({
           ...result.data,
           total_payments: 0,
           total_expenses: 0,
+          total_profit: 0,
           balance: 0,
         },
         ...current,

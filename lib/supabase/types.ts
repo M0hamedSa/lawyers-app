@@ -1,5 +1,5 @@
 export type UserRole = "superadmin" | "admin" | "user";
-export type TransactionType = "payment" | "expense";
+export type TransactionType = "payment" | "expense" | "profit";
 export type VoucherType = "cash" | "bank_transfer" | "check" | "card" | "other";
 export type ProfitType = "monthly" | "per_case";
 
@@ -47,6 +47,7 @@ export type ClientFinancialSummary = {
   client_id: string;
   total_payments: number;
   total_expenses: number;
+  total_profit: number;
   balance: number;
 };
 
@@ -61,6 +62,7 @@ export type CaseFinancialSummary = {
 export type ClientWithSummary = Client & {
   total_payments: number;
   total_expenses: number;
+  total_profit: number;
   balance: number;
   creator_name?: string | null;
 };
@@ -177,6 +179,7 @@ export type Database = {
           type?: TransactionType;
           amount?: number;
           description?: string;
+          is_profit_transaction?: boolean | null;
           voucher_type?: VoucherType;
           date?: string;
         };

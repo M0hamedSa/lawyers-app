@@ -13,7 +13,7 @@ type ClientRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  transactions: { amount: number; type: "payment" | "expense"; created_by?: string }[];
+  transactions: { amount: number; type: "payment" | "expense" | "profit"; created_by?: string }[];
   creator?: { full_name: string } | null;
 };
 
@@ -39,11 +39,15 @@ function withSummary(client: ClientRow, currentUser: SummaryUser | null = null):
       if (currentUser && currentUser.role !== "superadmin" && transaction.created_by !== currentUser.id) {
         return acc;
       }
-      if (transaction.type === "payment") acc.total_payments += Number(transaction.amount);
-      if (transaction.type === "expense") acc.total_expenses += Number(transaction.amount);
+      if (transaction.type === "profit") {
+        acc.total_profit += Number(transaction.amount);
+      } else {
+        if (transaction.type === "payment") acc.total_payments += Number(transaction.amount);
+        if (transaction.type === "expense") acc.total_expenses += Number(transaction.amount);
+      }
       return acc;
     },
-    { total_payments: 0, total_expenses: 0 },
+    { total_payments: 0, total_expenses: 0, total_profit: 0 },
   );
 
   return {
@@ -60,6 +64,7 @@ function withSummary(client: ClientRow, currentUser: SummaryUser | null = null):
     updated_at: client.updated_at,
     total_payments: totals.total_payments,
     total_expenses: totals.total_expenses,
+    total_profit: totals.total_profit,
     balance: totals.total_payments - totals.total_expenses,
     creator_name: client.creator?.full_name || null,
   };

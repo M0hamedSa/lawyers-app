@@ -90,12 +90,16 @@ export async function GET(request: Request) {
 
     let totalIncome = 0;
     let totalExpense = 0;
+    let totalProfit = 0;
 
     transactionsToReport.forEach(t => {
-      if (t.type === 'payment') {
+      if (t.type === 'profit') {
+        totalProfit += Number(t.amount);
+      } else if (t.type === 'payment') {
         totalIncome += Number(t.amount);
+      } else if (t.type === 'expense') {
+        totalExpense += Number(t.amount);
       }
-      if (t.type === 'expense') totalExpense += Number(t.amount);
     });
 
     if (user.role !== 'superadmin') {
@@ -278,6 +282,7 @@ export async function GET(request: Request) {
           }
           .payment { color: #059669; }
           .expense { color: #dc2626; }
+          .profit { color: #1d4ed8; }
           
           .footer {
             position: fixed;
@@ -314,6 +319,10 @@ export async function GET(request: Request) {
             <div class="summary-label">${firstCardLabel}</div>
             <div class="summary-value income">+${firstCardValue.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          <div class="summary-item">
+            <div class="summary-label">${locale === 'ar' ? 'إجمالي الأرباح' : 'Total Profit'}</div>
+            <div class="summary-value profit">+${totalProfit.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+          </div>
           ` : ''}
           <div class="summary-item">
             <div class="summary-label">${isSuperAdmin ? t('Dashboard.totalExpenses') : (t('Common.myExpenses') || 'My Expenses')}</div>
@@ -344,10 +353,10 @@ export async function GET(request: Request) {
                 <td>${new Date(t_row.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                 <td>${escapeHtml(t_row.clients?.name || '')}</td>
                 ${!caseId ? `<td>${escapeHtml(t_row.cases?.title || '-')}</td>` : ''}
-                <td>${t(t_row.type === 'payment' ? 'Common.payment' : 'Common.expense')}</td>
+                <td>${t_row.type === 'profit' ? (locale === 'ar' ? 'أرباح' : 'Profit') : t(t_row.type === 'payment' ? 'Common.payment' : 'Common.expense')}</td>
                 <td>${escapeHtml(t_row.description)}</td>
-                <td class="amount-cell ${t_row.type === 'payment' ? 'payment' : 'expense'}">
-                  ${t_row.type === 'payment' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
+                <td class="amount-cell ${t_row.type === 'profit' ? 'profit' : (t_row.type === 'payment' ? 'payment' : 'expense')}">
+                  ${t_row.type === 'profit' || t_row.type === 'payment' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
                 </td>
               </tr>
             `).join('')}

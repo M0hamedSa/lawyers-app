@@ -11,7 +11,7 @@ import type { Route } from "next";
 type Transaction = {
   id: string;
   date: string;
-  type: "payment" | "expense";
+  type: "payment" | "expense" | "profit";
   amount: number;
   description: string;
   client_id: string;
@@ -81,25 +81,37 @@ export function TransactionsTable({
             {
               key: "creator",
               header: tAdmin.title === "المسؤول" ? "بواسطة" : "Made By",
-              cell: (t: Transaction) => (
-                <span className="text-ink-600 dark:text-ink-300">{t.users?.full_name || "Unknown"}</span>
-              ),
+              cell: (t: Transaction) => {
+                if (t.type === "profit") {
+                  return <span className="text-ink-600 dark:text-ink-300">{tAdmin.title === "المسؤول" ? "النظام" : "System"}</span>;
+                }
+                return <span className="text-ink-600 dark:text-ink-300">{t.users?.full_name || "Unknown"}</span>;
+              },
             },
             {
               key: "type",
               header: t.columns_type,
-              cell: (t: Transaction) => (
-                <span
-                  className={cn(
-                    "inline-flex rounded-md px-2 py-1 text-xs font-semibold capitalize",
-                    t.type === "payment"
-                      ? "bg-success-50 text-success-800 dark:bg-success-950/50 dark:text-success-300"
-                      : "bg-error-50 text-error-800 dark:bg-error-950/50 dark:text-error-300",
-                  )}
-                >
-                  {tCommon[t.type]}
-                </span>
-              ),
+              cell: (t: Transaction) => {
+                if (t.type === "profit") {
+                  return (
+                    <span className="inline-flex rounded-md px-2 py-1 text-xs font-semibold capitalize bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      {tAdmin.title === "المسؤول" ? "أرباح" : "Profit"}
+                    </span>
+                  );
+                }
+                return (
+                  <span
+                    className={cn(
+                      "inline-flex rounded-md px-2 py-1 text-xs font-semibold capitalize",
+                      t.type === "payment"
+                        ? "bg-success-50 text-success-800 dark:bg-success-950/50 dark:text-success-300"
+                        : "bg-error-50 text-error-800 dark:bg-error-950/50 dark:text-error-300",
+                    )}
+                  >
+                    {tCommon[t.type]}
+                  </span>
+                );
+              },
             },
             {
               key: "description",
@@ -110,17 +122,27 @@ export function TransactionsTable({
               key: "amount",
               header: t.columns_amount,
               className: "text-end",
-              cell: (t: Transaction) => (
-                <span
-                  className={cn(
-                    "font-semibold tabular-nums",
-                    t.type === "payment" ? "text-success-700 dark:text-success-400" : "text-error-700 dark:text-error-400",
-                  )}
-                >
-                  {t.type === "payment" ? "+" : "-"}
-                  {formatCurrency(Number(t.amount), locale)}
-                </span>
-              ),
+              cell: (t: Transaction) => {
+                const isProfit = t.type === "profit";
+                const isPayment = t.type === "payment";
+                const isPositive = isPayment || isProfit;
+                
+                return (
+                  <span
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      isProfit 
+                        ? "text-blue-700 dark:text-blue-400" 
+                        : isPayment 
+                          ? "text-success-700 dark:text-success-400" 
+                          : "text-error-700 dark:text-error-400",
+                    )}
+                  >
+                    {isPositive ? "+" : "-"}
+                    {formatCurrency(Number(t.amount), locale)}
+                  </span>
+                );
+              },
             },
           ]}
         />
