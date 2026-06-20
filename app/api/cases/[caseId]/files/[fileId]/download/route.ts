@@ -42,11 +42,13 @@ export async function GET(
 
     const isDownload = request.nextUrl.searchParams.get("download") === "1";
     const disposition = isDownload ? "attachment" : "inline";
+    const safeFilename = dbFile.filename.replace(/[^\x20-\x7E]/g, "_");
+    const encodedFilename = encodeURIComponent(dbFile.filename);
 
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": dbFile.mime_type || "application/octet-stream",
-        "Content-Disposition": `${disposition}; filename="${dbFile.filename}"`,
+        "Content-Disposition": `${disposition}; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`,
         "Content-Length": String(buffer.length),
       },
     });
