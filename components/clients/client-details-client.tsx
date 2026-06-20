@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import type { Route } from "next";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Edit2, FileText, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit2, Download, FileText, Plus, Loader2 } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/client";
 import type {
   ClientWithSummary,
   CaseWithSummary,
+  CaseFile,
 } from "@/lib/supabase/types";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { encodeId } from "@/lib/id-utils";
@@ -294,7 +295,7 @@ export function ClientDetailsClient({
           setModalOpen(true);
         }} />
       ) : null}
-      {activeTab === "files" ? <FilesTab /> : null}
+      {activeTab === "files" ? <FilesTab clientId={client.id} /> : null}
 
       <Modal title={form.id ? tCases("editCase") : tCases("newCase")} open={modalOpen} onClose={() => setModalOpen(false)}>
         <form onSubmit={saveCase} className="space-y-4 [&_input]:w-full [&_select]:w-full">
@@ -619,17 +620,88 @@ function CasesTab({ cases, userRole, client, onEdit }: { cases: CaseWithSummary[
   );
 }
 
-function FilesTab() {
+function FilesTab({ clientId }: { clientId: string }) {
   const t = useTranslations("ClientDetails");
+  const locale = useLocale();
+  const [files, setFiles] = useState<(CaseFile & { cases: { title: string } })[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch(`/api/clients/${clientId}/files`);
+        const data = await res.json();
+        if (!cancelled) {
+          if (!res.ok) throw new Error(data.error || t("listError"));
+          setFiles(data.files ?? []);
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : t("listError"));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [clientId, t]);
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function handleDownload(file: CaseFile) {
+    window.open(`/api/cases/${file.case_id}/files/${file.id}/download`, "_blank");
+  }
 
   return (
     <FadeInBox>
       <Card>
-        <CardContent className="flex flex-col items-center justify-center p-8 text-center sm:p-12">
-          <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
-            <FileText className="size-6" />
-          </div>
-          <p className="text-sm text-ink-500 dark:text-ink-400">{t("fileStorageText")}</p>
+        <CardContent className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="size-6 animate-spin text-ink-400" />
+            </div>
+          ) : error ? (
+            <div className="rounded-md border border-error-200 bg-error-50 p-3 text-body-sm text-error-700 dark:border-error-900/50 dark:bg-error-950/40 dark:text-error-200">
+              {error}
+            </div>
+          ) : files.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center sm:p-12">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                <FileText className="size-6" />
+              </div>
+              <p className="text-body-md text-ink-500 dark:text-ink-400">{t("noFiles")}</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-ink-100 dark:divide-ink-800">
+              {files.map((file) => (
+                <div key={file.id} className="flex items-center gap-4 py-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    <FileText className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-body-md font-medium text-ink-800 dark:text-ink-100">
+                      {file.filename}
+                    </p>
+                    <p className="text-body-sm text-ink-500 dark:text-ink-400">
+                      {file.cases?.title ?? ""} &middot; {formatFileSize(file.file_size)} &middot; {new Date(file.created_at).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(file)}
+                    className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm text-accent-600 transition-colors hover:bg-accent-50 dark:text-accent-400 dark:hover:bg-accent-950/30"
+                  >
+                    <Download className="size-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </FadeInBox>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, FileText, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -20,6 +20,7 @@ import type {
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { encodeId } from "@/lib/id-utils";
 import { ExportTransactionsButton } from "@/components/admin/export-transactions-button";
+import { FilesTab } from "@/components/cases/files-tab";
 import { StaggerContainer, FadeInBox, CountUpNumber } from "@/components/ui/animated";
 
 type Tab = "finance" | "files";
@@ -351,7 +352,7 @@ export function CaseDetailsClient({
       ) : null}
       {activeTab === "files" ? (
         <FadeInBox delay={0.2}>
-        <FilesTab />
+        <FilesTab caseId={caseData.id} />
         </FadeInBox>
       ) : null}
 
@@ -577,17 +578,4 @@ function FinanceTab({ transactions, userRole }: { transactions: TransactionWithU
   );
 }
 
-function FilesTab() {
-  const t = useTranslations("ClientDetails");
 
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-center justify-center p-8 text-center sm:p-12">
-        <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent-100 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
-          <FileText className="size-6" />
-        </div>
-        <p className="text-sm text-ink-500 dark:text-ink-400">{t("fileStorageText")}</p>
-      </CardContent>
-    </Card>
-  );
-}

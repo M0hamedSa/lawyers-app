@@ -19,6 +19,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.468.0",
+    "megajs": "^1.3.10",
     "next": "^15.1.0",
     "next-intl": "^4.11.0",
     "puppeteer-core": "^24.43.1",

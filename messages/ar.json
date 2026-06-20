@@ -172,7 +172,19 @@
     "createdBy": "أنشئ بواسطة",
     "financialLedger": "دفتر الأستاذ المالي",
     "emptyLedger": "لا يوجد قيود دفترية بعد.",
-    "fileStorageText": "يمكن ربط تخزين الملفات مع Supabase Storage."
+    "fileStorageText": "يمكن ربط تخزين الملفات مع Supabase Storage.",
+    "uploadFile": "رفع ملف",
+    "uploading": "جاري الرفع...",
+    "deleteFile": "حذف الملف",
+    "deleteFileConfirm": "هل أنت متأكد من حذف هذا الملف؟",
+    "noFiles": "لم يتم رفع أي ملفات بعد.",
+    "fileSize": "الحجم",
+    "fileDate": "تاريخ الرفع",
+    "fileUploadedBy": "رفع بواسطة",
+    "uploadError": "فشل رفع الملف.",
+    "deleteError": "فشل حذف الملف.",
+    "listError": "فشل تحميل الملفات.",
+    "megaNotConfigured": "تخزين الملفات غير مهيأ. اتصل بالمسؤول."
   },
   "Transaction": {
     "saveTransaction": "حفظ المعاملة",

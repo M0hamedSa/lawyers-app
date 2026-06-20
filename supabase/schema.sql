@@ -71,6 +71,26 @@ create table if not exists public.client_access (
   unique(client_id, user_id)
 );
 
+create table if not exists public.case_files (
+  id uuid primary key default gen_random_uuid(),
+  case_id uuid not null references public.cases(id) on delete cascade,
+  filename text not null,
+  file_size bigint not null,
+  mime_type text,
+  mega_node_id text not null,
+  mega_parent_id text,
+  uploaded_by uuid references public.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists case_files_case_id_idx on public.case_files (case_id);
+
+drop trigger if exists case_files_set_updated_at on public.case_files;
+create trigger case_files_set_updated_at
+before update on public.case_files
+for each row execute function public.set_updated_at();
+
 create table if not exists public.transactions (
   id uuid primary key default gen_random_uuid(),
   client_id uuid not null references public.clients(id) on delete cascade,
@@ -153,7 +173,57 @@ alter table public.users enable row level security;
 alter table public.clients enable row level security;
 alter table public.client_access enable row level security;
 alter table public.cases enable row level security;
+alter table public.case_files enable row level security;
 alter table public.transactions enable row level security;
+
+-- Case Files policies
+
+drop policy if exists "Users can read case files of assigned clients" on public.case_files;
+create policy "Users can read case files of assigned clients"
+on public.case_files for select
+to authenticated
+using (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+  or exists (
+    select 1 from public.client_access ca
+    join public.cases cs on cs.client_id = ca.client_id
+    where cs.id = case_files.case_id and ca.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can insert case files" on public.case_files;
+create policy "Users can insert case files"
+on public.case_files for insert
+to authenticated
+with check (
+  uploaded_by = auth.uid()
+  and (
+    exists (
+      select 1 from public.users u
+      where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+    )
+    or exists (
+      select 1 from public.client_access ca
+      join public.cases cs on cs.client_id = ca.client_id
+      where cs.id = case_id and ca.user_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists "Users can delete own case files" on public.case_files;
+create policy "Users can delete own case files"
+on public.case_files for delete
+to authenticated
+using (
+  uploaded_by = auth.uid()
+  or exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+);
 
 -- Users policies
 drop policy if exists "Authenticated users can read firm users" on public.users;

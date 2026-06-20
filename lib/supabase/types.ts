@@ -73,6 +73,19 @@ export type CaseWithSummary = Case & {
   balance: number;
 };
 
+export type CaseFile = {
+  id: string;
+  case_id: string;
+  filename: string;
+  file_size: number;
+  mime_type: string | null;
+  mega_node_id: string;
+  mega_parent_id: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -207,6 +220,41 @@ export type Database = {
           },
         ],
       },
+      case_files: {
+        Row: CaseFile;
+        Insert: {
+          case_id: string;
+          filename: string;
+          file_size: number;
+          mime_type?: string | null;
+          mega_node_id: string;
+          mega_parent_id?: string | null;
+          uploaded_by?: string | null;
+        };
+        Update: {
+          filename?: string;
+          file_size?: number;
+          mime_type?: string | null;
+          mega_node_id?: string;
+          mega_parent_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "case_files_case_id_fkey";
+            columns: ["case_id"];
+            isOneToOne: false;
+            referencedRelation: "cases";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "case_files_uploaded_by_fkey";
+            columns: ["uploaded_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       client_access: {
         Row: {
           user_id: string,
