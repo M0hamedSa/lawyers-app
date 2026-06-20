@@ -2,56 +2,101 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/routing";
+
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Image from "next/image";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, inputClassName } from "@/components/ui/field";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Link } from "@/i18n/routing";
 
 export default function SetPasswordPage() {
   const t = useTranslations("SetPassword");
-  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
-  const [phase, setPhase] = useState<"checking" | "ready" | "invalid">("checking");
+  const [phase, setPhase] = useState<"checking" | "ready" | "invalid" | "success">("checking");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  function clearPasswordResetCookie() {
+    document.cookie = "password_reset=0; path=/; max-age=0; SameSite=Lax";
+  }
+
+  function limitAuthTokenLifespan() {
+    const ref = process.env.NEXT_PUBLIC_SUPABASE_URL?.match(
+      /https:\/\/(.+)\.supabase\.co/,
+    )?.[1];
+    if (!ref) return;
+    const name = `sb-${ref}-auth-token`;
+    const match = document.cookie.split("; ").find((c) => c.startsWith(`${name}=`));
+    if (!match) return;
+    const value = match.slice(name.length + 1);
+    document.cookie = `${name}=${value}; path=/; max-age=120; SameSite=Lax; Secure`;
+  }
 
   useEffect(() => {
     let cancelled = false;
 
     async function establishSession() {
       try {
+        // First check if supabase-js already handled the auth (auto-detection
+        // with flowType: 'pkce' processes ?code= during client init).
+        const existing = await supabase.auth.getSession();
+        if (existing.data.session) {
+          limitAuthTokenLifespan();
+          setPhase("ready");
+          return;
+        }
+
         const url = new URL(window.location.href);
+
+        // PKCE flow (?code=…) — supabase-js auto-detection may have already
+        // consumed the code, so retry getSession if exchangeCodeForSession fails.
         const code = url.searchParams.get("code");
         if (code) {
           const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeErr) {
-            if (!cancelled) {
-              setError(exchangeErr.message);
-              setPhase("invalid");
+            const retry = await supabase.auth.getSession();
+            if (retry.data.session) {
+              limitAuthTokenLifespan();
+              setPhase("ready");
+              return;
             }
+            if (!cancelled) setError(exchangeErr.message);
+            setPhase("invalid");
             return;
           }
-          window.history.replaceState(null, "", `${url.pathname}${url.hash}`);
-        }
-
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (cancelled) return;
-
-        if (!session) {
-          setPhase("invalid");
+          window.history.replaceState(null, "", url.pathname);
+          limitAuthTokenLifespan();
+          setPhase("ready");
           return;
         }
 
-        setPhase("ready");
+        // Implicit flow (#access_token=…) — fallback for legacy email links.
+        const hash = window.location.hash;
+        if (hash && hash.includes("access_token")) {
+          const params = new URLSearchParams(hash.replace(/^#/, ""));
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
+          if (accessToken && refreshToken) {
+            const { error: sessionErr } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            if (sessionErr) {
+              if (!cancelled) setError(sessionErr.message);
+              setPhase("invalid");
+              return;
+            }
+            window.history.replaceState(null, "", url.pathname);
+            limitAuthTokenLifespan();
+            setPhase("ready");
+            return;
+          }
+        }
+
+        if (!cancelled) setPhase("invalid");
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : t("invalidLink"));
@@ -92,8 +137,10 @@ export default function SetPasswordPage() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    setPending(false);
+    clearPasswordResetCookie();
+    await supabase.auth.signOut();
+    setPhase("success");
   }
 
   if (phase === "checking") {
@@ -121,9 +168,28 @@ export default function SetPasswordPage() {
           >
             {t("goToLogin")}
           </Link>
-          <div className="pt-4">
-            <ThemeToggle />
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "success") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-ink-50 px-4 py-12 sm:px-6 lg:px-8 dark:bg-ink-950">
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="flex flex-col items-center">
+            <div className="flex size-12 items-center justify-center shrink-0">
+              <Image src="/logo.png" alt="Logo" width={48} height={48} className="w-full h-full rounded-full object-cover" />
+            </div>
+            <h1 className="mt-6 text-display-sm text-ink-800 dark:text-ink-100">{t("successTitle")}</h1>
+            <p className="mt-2 text-body-md text-ink-600 dark:text-ink-300">{t("successMessage")}</p>
           </div>
+          <Link
+            href="/login"
+            className="inline-block text-body-md font-medium text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300"
+          >
+            {t("goToLogin")}
+          </Link>
         </div>
       </div>
     );
@@ -189,9 +255,6 @@ export default function SetPasswordPage() {
           </CardContent>
         </Card>
 
-        <div className="pt-4">
-          <ThemeToggle />
-        </div>
       </div>
     </div>
   );

@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/routing";
+import { useRouter, Link } from "@/i18n/routing";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, inputClassName } from "@/components/ui/field";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { signInAction } from "./actions";
 
 export default function LoginPage() {
@@ -68,16 +67,25 @@ export default function LoginPage() {
                 />
               </Field>
 
-              <Field label={t("password")}>
+              <div className="grid gap-1.5 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-title-sm text-ink-700 dark:text-ink-300">{t("password")}</span>
+                  <Link 
+                    href="/forgot-password" 
+                    className="text-body-sm font-medium text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300"
+                  >
+                    {t("forgotPassword")}
+                  </Link>
+                </div>
                 <input
                   name="password"
                   type="password"
                   autoComplete="current-password"
                   required
-                  className={inputClassName}
+                  className={inputClassName + " w-full"}
                   dir="ltr"
                 />
-              </Field>
+              </div>
 
               <ActionButton type="submit" className="w-full justify-center" disabled={pending}>
                 {pending ? (
@@ -92,10 +100,6 @@ export default function LoginPage() {
             </form>
           </CardContent>
         </Card>
-
-        <div className="mx-auto w-full max-w-md pt-4">
-          <ThemeToggle />
-        </div>
       </div>
     </div>
   );

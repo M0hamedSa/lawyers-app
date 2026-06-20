@@ -26,9 +26,12 @@ export async function createClient(): Promise<SupabaseClient<Database>> {
               cookieStore.set(name, value, options),
             );
           } catch {
-            // Server Components cannot set cookies. Middleware can be added when auth screens are introduced.
+            // Server Components cannot set cookies.
           }
         },
+      },
+      auth: {
+        flowType: "pkce",
       },
     },
   ) as SupabaseClient<Database>;

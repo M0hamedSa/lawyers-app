@@ -68,10 +68,91 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
+
+  // Derive Supabase auth cookie name from project URL
+  const supabaseRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.match(
+    /https:\/\/(.+)\.supabase\.co/,
+  )?.[1];
+  const authCookieName = supabaseRef ? `sb-${supabaseRef}-auth-token` : null;
+
+  // ── Password reset flow ──────────────────────────────────────────────────
+
+  const PASSWORD_RESET_TTL = 120; // seconds
+  const resetCookie = request.cookies.get("password_reset");
+  const inPasswordReset = resetCookie?.value != null;
+
+  // Helper: set cookies to clear both the restriction and auth token
+  function clearResetCookies(res: NextResponse): void {
+    res.cookies.set("password_reset", "", { path: "/", maxAge: 0 });
+    if (authCookieName) {
+      res.cookies.set(authCookieName, "", { path: "/", maxAge: 0 });
+    }
+  }
+
+  // Helper: override auth token TTL to match remaining reset window
+  function syncAuthTokenTtl(res: NextResponse, remaining: number): void {
+    if (authCookieName && user) {
+      const authCookie = request.cookies.get(authCookieName);
+      if (authCookie) {
+        res.cookies.set(authCookieName, authCookie.value, {
+          path: "/",
+          maxAge: Math.ceil(remaining),
+          sameSite: "lax",
+          httpOnly: true,
+          secure: true,
+        });
+      }
+    }
+  }
+
+  // Check if the reset timer has expired (manual check using stored timestamp)
+  if (inPasswordReset) {
+    const resetTime = parseInt(resetCookie!.value, 10);
+    const elapsed = (Date.now() - resetTime) / 1000;
+
+    if (elapsed >= PASSWORD_RESET_TTL) {
+      // Timer expired — destroy both cookies and redirect to login
+      const locale = path.startsWith("/ar") ? "ar" : "en";
+      const redirect = NextResponse.redirect(new URL(`/${locale}/login`, request.url));
+      clearResetCookies(redirect);
+      return redirect;
+    } else if (!path.includes("/set-password")) {
+      // Still within the reset window — restrict to set-password page.
+      const locale = path.startsWith("/ar") ? "ar" : "en";
+      const redirect = NextResponse.redirect(new URL(`/${locale}/set-password`, request.url));
+      syncAuthTokenTtl(redirect, PASSWORD_RESET_TTL - elapsed);
+      return redirect;
+    }
+  }
+
+  // Set password_reset cookie on the very first request with ?code= (PKCE redirect).
+  // Value is the current timestamp so the middleware can enforce the 120s window
+  // even if the user doesn't make any request within that time.
+  if (
+    !inPasswordReset
+    && path.includes("/set-password")
+    && request.nextUrl.searchParams.has("code")
+  ) {
+    response.cookies.set("password_reset", String(Date.now()), {
+      path: "/",
+      maxAge: PASSWORD_RESET_TTL,
+      sameSite: "lax",
+    });
+  }
+
   const isPublicAuthPage =
-    path.includes('/login') || path.includes('/set-password');
+    path.includes('/login') || path.includes('/set-password') || path.includes('/forgot-password');
 
   if (!user && !isPublicAuthPage) {
+    // If hitting just a bare locale path (e.g. /en or /ar), it's likely a
+    // Supabase auth callback fallback — rewrite to set-password instead of
+    // redirect, so the URL hash (e.g. #access_token=…) survives to the
+    // client-side handler.
+    if (/^\/(en|ar)$/.test(path)) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${path.slice(1)}/set-password`;
+      return NextResponse.rewrite(url);
+    }
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

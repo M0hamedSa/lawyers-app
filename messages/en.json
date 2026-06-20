@@ -26,7 +26,19 @@
     "email": "Email address",
     "password": "Password",
     "submit": "Sign in",
-    "error": "Invalid email or password"
+    "error": "Invalid email or password",
+    "forgotPassword": "Forgot password?"
+  },
+  "ForgotPassword": {
+    "title": "Reset your password",
+    "subtitle": "Enter your email address and we'll send you a link to reset your password.",
+    "email": "Email address",
+    "submit": "Send reset link",
+    "submitting": "Sending...",
+    "success": "Check your email for a link to reset your password. If it doesn't appear within a few minutes, check your spam folder.",
+    "error": "Failed to send reset link. Please try again.",
+    "rateLimited": "Please wait a minute before requesting another reset link.",
+    "backToLogin": "Back to sign in"
   },
   "SetPassword": {
     "title": "Set your password",
@@ -39,7 +51,9 @@
     "mismatch": "Passwords do not match.",
     "invalidTitle": "Link not valid",
     "invalidLink": "This invitation link is invalid or has expired. Ask an admin to send a new invite, or sign in if you already have a password.",
-    "goToLogin": "Go to sign in"
+    "goToLogin": "Go to sign in",
+    "successTitle": "Password changed",
+    "successMessage": "Your password has been changed successfully. Sign in with your new password."
   },
   "Navbar": {
     "searchClient": "Quick client access...",
