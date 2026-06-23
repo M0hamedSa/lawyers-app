@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUser, getDashboardData } from '@/lib/supabase/queries';
+import { getCurrentUser, getClients } from '@/lib/supabase/queries';
 import { createClient } from '@/lib/supabase/server';
 import fs from 'fs';
 import path from 'path';
 
-export const maxDuration = 60; // Allow up to 60 seconds for PDF generation
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   try {
@@ -19,7 +19,6 @@ export async function GET(request: Request) {
       return new NextResponse('Invalid locale', { status: 400 });
     }
 
-    // Load translations
     const messagesPath = path.join(process.cwd(), 'messages', `${locale}.json`);
     const messages = JSON.parse(fs.readFileSync(messagesPath, 'utf8'));
     const t = (key: string): string => {
@@ -36,50 +35,17 @@ export async function GET(request: Request) {
     };
 
     const escapeHtml = (s: string): string =>
-      s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+      s ? s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;') : '';
 
-    // Retrieve active dashboard data (scoped securely to current user via session)
-    const data = await getDashboardData();
+    const clients = await getClients();
 
-    // Query transactions — superadmin sees all types, regular user sees own expenses only
-    const supabase = await createClient();
-    let txQuery = supabase
-      .from("transactions")
-      .select("*, clients(name), users!transactions_created_by_fkey(full_name)")
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (user.role !== "superadmin") {
-      txQuery = txQuery
-        .eq("created_by", user.id)
-        .eq("type", "expense");
-    }
-
-    const { data: allTransactions, error: txError } = await txQuery;
-    if (txError) throw new Error(txError.message);
-
-    // Block export if there is truly no data to show (no transactions AND no clients)
-    const hasTransactions = allTransactions && allTransactions.length > 0;
-    const hasClients = data.totalClients > 0;
-    if (!hasTransactions && !hasClients) {
+    if (clients.length === 0) {
       return new NextResponse(JSON.stringify({ error: 'NO_DATA' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
+    const isSuperAdmin = user.role === 'superadmin';
     const isRtl = locale === 'ar';
-    const isSuperAdmin = data.userRole === 'superadmin';
-
-    const reportTitle = isSuperAdmin
-      ? (t('Admin.firmReportTitle') || 'Firm Dashboard Summary Report')
-      : (t('Admin.myReportTitle') || 'My Dashboard Summary Report');
-
-    const labelPayments = t('Dashboard.totalPayments') || 'Total Payments';
-
-    const labelExpenses = isSuperAdmin
-      ? (t('Dashboard.totalExpenses') || 'Total Expenses')
-      : (t('Common.myExpenses') || 'My Expenses');
-
-    const labelClients = t('Dashboard.totalClients') || 'Total Clients';
-    const labelBalance = t('Dashboard.totalBalance') || 'Total Balance';
+    const reportTitle = t('Clients.heading') || 'Clients';
 
     const logoPath = path.join(process.cwd(), 'public', 'logo.png');
     const logoSrc = fs.existsSync(logoPath)
@@ -87,6 +53,25 @@ export async function GET(request: Request) {
       : '';
 
     const exportedAt = `${user.full_name} · ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+
+    // For per_case clients, we need to sum profit_amount from cases
+    const supabase = await createClient();
+    const { data: allCases } = await supabase.from('cases').select('client_id, profit_amount');
+
+    const casesProfitByClient: Record<string, number> = {};
+    (allCases || []).forEach(c => {
+      casesProfitByClient[c.client_id] = (casesProfitByClient[c.client_id] || 0) + (Number(c.profit_amount) || 0);
+    });
+
+    const totalPayments = clients.reduce((sum, c) => sum + c.total_payments, 0);
+    const totalExpenses = clients.reduce((sum, c) => sum + c.total_expenses, 0);
+    const totalProfit = clients.reduce((sum, c) => {
+      if (c.profit_type === 'per_case') {
+        return sum + (casesProfitByClient[c.id] || 0);
+      }
+      return sum + c.total_profit;
+    }, 0);
+    const totalBalance = totalPayments - totalExpenses;
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -107,7 +92,7 @@ export async function GET(request: Request) {
             --bg: #ffffff;
             --card-bg: #fafaf7;
           }
-          body { 
+          body {
             font-family: ${isRtl ? "'Cairo', sans-serif" : "'Inter', sans-serif"};
             color: var(--ink-900);
             margin: 0;
@@ -123,43 +108,14 @@ export async function GET(request: Request) {
             border-bottom: 1px solid var(--ink-100);
             padding-bottom: 20px;
           }
-          .brand-area {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-          }
-          .brand-logo img {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            display: block;
-          }
-          .brand-text .brand-name {
-            font-weight: 700;
-            font-size: 15px;
-            color: var(--primary);
-            line-height: 1.2;
-          }
-          .brand-text .brand-sub {
-            font-size: 11px;
-            color: var(--ink-500);
-            margin-top: 1px;
-          }
-          .title-area {
-            text-align: ${isRtl ? 'left' : 'right'};
-          }
-          .title-area h1 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--ink-900);
-            letter-spacing: -0.02em;
-          }
-          .meta {
-            font-size: 11px;
-            color: var(--ink-500);
-            margin-top: 4px;
-          }
+          .brand-area { display: flex; align-items: center; gap: 10px; }
+          .brand-logo img { width: 40px; height: 40px; border-radius: 8px; display: block; }
+          .brand-text .brand-name { font-weight: 700; font-size: 15px; color: var(--primary); line-height: 1.2; }
+          .brand-text .brand-sub { font-size: 11px; color: var(--ink-500); margin-top: 1px; }
+          .title-area { text-align: ${isRtl ? 'left' : 'right'}; }
+          .title-area h1 { margin: 0; font-size: 18px; font-weight: 700; color: var(--ink-900); letter-spacing: -0.02em; }
+          .meta { font-size: 11px; color: var(--ink-500); margin-top: 4px; }
+
           .summary-strip {
             display: flex;
             background: var(--card-bg);
@@ -171,38 +127,19 @@ export async function GET(request: Request) {
           .summary-item {
             flex: 1;
             text-align: center;
-            border-inline-end: 1px solid var(--ink-200);
+            border-inline-end: 1px solid var(--ink-100);
             padding: 0 10px;
           }
-          .summary-item:last-child {
-            border-inline-end: none;
-          }
-          .summary-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            color: var(--ink-500);
-            font-weight: 400;
-            margin-bottom: 8px;
-            letter-spacing: 0.05em;
-          }
-          .summary-value {
-            font-size: 16px;
-            font-weight: 400;
-            color: var(--ink-900);
-            white-space: nowrap;
-          }
+          .summary-item:last-child { border-inline-end: none; }
+          .summary-label { font-size: 11px; text-transform: uppercase; color: var(--ink-500); font-weight: 400; margin-bottom: 8px; letter-spacing: 0.05em; }
+          .summary-value { font-size: 16px; font-weight: 400; color: var(--ink-900); white-space: nowrap; }
           .summary-value.income { color: #059669; }
           .summary-value.expense { color: #dc2626; }
-          .summary-value.balance-positive { color: var(--ink-900); }
-          .summary-value.balance-negative { color: var(--ink-900); }
-          
-          table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 20px;
-          }
-          th { 
-            background-color: var(--card-bg); 
+          .summary-value.profit { color: #1d4ed8; }
+
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th {
+            background-color: var(--card-bg);
             color: var(--ink-700);
             font-weight: 700;
             text-transform: uppercase;
@@ -213,21 +150,31 @@ export async function GET(request: Request) {
             letter-spacing: 0.05em;
             white-space: nowrap;
           }
-          td { 
-            padding: 14px 12px; 
-            border-bottom: 1px solid var(--ink-100);
-            color: var(--ink-700);
-            font-size: 13px;
-          }
-          .numeric-cell {
+          td { padding: 14px 12px; border-bottom: 1px solid var(--ink-100); color: var(--ink-700); font-size: 13px; }
+          .amount-cell {
             text-align: ${isRtl ? 'left' : 'right'};
             font-weight: 600;
-            font-family: ${isRtl ? "'Cairo', sans-serif" : "'Inter', sans-serif"};
             white-space: nowrap;
           }
-          .negative { color: #dc2626; }
-          .positive { color: #059669; }
-          
+          .payment { color: #059669; }
+          .expense-color { color: #dc2626; }
+          .profit-color { color: #1d4ed8; }
+          .badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 9999px;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-inline-end: 4px;
+          }
+          .badge-active { background: #dcfce7; color: #166534; }
+          .badge-inactive { background: #f3f4f6; color: #374151; }
+          .badge-monthly { background: #f3e8ff; color: #7c3aed; }
+          .badge-percase { background: #e0f2fe; color: #0369a1; }
+
           .footer {
             position: fixed;
             bottom: 0;
@@ -256,65 +203,77 @@ export async function GET(request: Request) {
             <div class="meta"><span dir="ltr">${exportedAt}</span></div>
           </div>
         </div>
-        
+
         <div class="summary-strip">
           <div class="summary-item">
-            <div class="summary-label">${labelClients}</div>
-            <div class="summary-value">${data.totalClients}</div>
+            <div class="summary-label">${locale === 'ar' ? 'إجمالي العملاء' : 'Total Clients'}</div>
+            <div class="summary-value">${clients.length}</div>
           </div>
           ${isSuperAdmin ? `
           <div class="summary-item">
-            <div class="summary-label">${labelPayments}</div>
-            <div class="summary-value income">+${data.totalPayments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${t('Dashboard.totalPayments') || 'Total Payments'}</div>
+            <div class="summary-value income">+${totalPayments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">${locale === 'ar' ? 'إجمالي الاتعاب' : 'Total Profit'}</div>
+            <div class="summary-value profit">+${totalProfit.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">${t('Dashboard.totalExpenses') || 'Total Expenses'}</div>
+            <div class="summary-value expense">-${totalExpenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">${t('Dashboard.totalBalance') || 'Balance'}</div>
+            <div class="summary-value">${totalBalance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           ` : ''}
-          <div class="summary-item">
-            <div class="summary-label">${labelExpenses}</div>
-            <div class="summary-value expense">-${data.totalExpenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">${labelBalance}</div>
-            <div class="summary-value ${data.totalBalance >= 0 ? 'balance-positive' : 'balance-negative'}">${data.totalBalance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
-          </div>
         </div>
-
-        <h3 style="margin-top: 40px; font-size: 16px; border-bottom: 1px solid var(--ink-100); padding-bottom: 8px;">
-          ${isSuperAdmin ? (t('Admin.allTransactions') || 'All Transactions') : (t('Common.detailedExpenses') || 'My Expenses')}
-        </h3>
 
         <table>
           <thead>
             <tr>
               <th style="width: 40px; text-align: center;">#</th>
-              <th>${t('Transaction.columns.date') || 'Date'}</th>
               <th>${t('Clients.columns.client') || 'Client'}</th>
-              ${isSuperAdmin ? `<th>${t('Transaction.columns.type') || 'Type'}</th>` : ''}
-              ${isSuperAdmin ? `<th>${t('Common.by') || 'By'}</th>` : ''}
-              <th>${t('Transaction.columns.description') || 'Description'}</th>
-              <th style="text-align: ${isRtl ? 'left' : 'right'}">${t('Transaction.columns.amount') || 'Amount'}</th>
+              <th>${t('Clients.columns.contact') || 'Contact'}</th>
+              ${isSuperAdmin ? `
+              <th class="amount-cell">${t('Clients.columns.payments') || 'Payments'}</th>
+              <th class="amount-cell">${locale === 'ar' ? 'الاتعاب' : 'Profit'}</th>
+              <th class="amount-cell">${t('Clients.columns.expenses') || 'Expenses'}</th>
+              <th class="amount-cell">${t('Clients.columns.balance') || 'Balance'}</th>
+              ` : `
+              <th class="amount-cell">${locale === 'ar' ? 'مصروفاتي' : 'My Expenses'}</th>
+              `}
             </tr>
           </thead>
           <tbody>
-            ${(allTransactions || []).map((tx, index) => `
+            ${clients.map((client, index) => {
+              const clientProfit = client.profit_type === 'per_case'
+                ? (casesProfitByClient[client.id] || 0)
+                : client.total_profit;
+              return `
               <tr>
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
-                <td>${new Date(tx.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                <td>${escapeHtml(tx.clients?.name || '-')}</td>
-                ${isSuperAdmin ? `<td>${tx.type === 'profit' ? (locale === 'ar' ? 'اتعاب' : 'Profit') : tx.type === 'payment' ? t('Common.payment') : tx.type === 'office' ? t('Common.office') : t('Common.expense')}</td>` : ''}
-                ${isSuperAdmin ? `<td>${escapeHtml(tx.users?.full_name || (tx.type === 'profit' ? (locale === 'ar' ? 'النظام' : 'System') : '-'))}</td>` : ''}
-                <td>${escapeHtml(tx.description || '-')}</td>
-                <td class="numeric-cell ${tx.type === 'payment' || tx.type === 'profit' ? 'positive' : 'negative'}" style="text-align: ${isRtl ? 'left' : 'right'}">
-                  ${tx.type === 'payment' || tx.type === 'profit' ? '+' : '-'}${Number(tx.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
+                <td>
+                  <div style="font-weight: 600; color: var(--ink-900);">${escapeHtml(client.name)}</div>
+                  <div style="margin-top: 4px;">
+                    <span class="badge ${client.status === 'active' ? 'badge-active' : 'badge-inactive'}">${client.status === 'active' ? t('Clients.form.active') : t('Clients.form.inactive')}</span>
+                    ${isSuperAdmin ? `<span class="badge ${client.profit_type === 'monthly' ? 'badge-monthly' : 'badge-percase'}">${client.profit_type === 'monthly' ? t('Clients.form.monthly') : t('Clients.form.perCase')}</span>` : ''}
+                  </div>
                 </td>
-              </tr>
-            `).join('')}
-            ${(allTransactions || []).length === 0 ? `
-              <tr>
-                <td colspan="${isSuperAdmin ? 7 : 5}" style="text-align: center; padding: 40px; color: var(--ink-500);">
-                  ${t('Transaction.noResults') || 'No transactions found'}
+                <td style="color: var(--ink-500);">
+                  <div>${escapeHtml(client.phone || (locale === 'ar' ? 'لا يوجد' : 'N/A'))}</div>
+                  <div>${escapeHtml(client.email || (locale === 'ar' ? 'لا يوجد' : 'N/A'))}</div>
                 </td>
+                ${isSuperAdmin ? `
+                <td class="amount-cell payment">+${client.total_payments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>
+                <td class="amount-cell profit-color">+${clientProfit.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>
+                <td class="amount-cell expense-color">-${client.total_expenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>
+                <td class="amount-cell">${client.balance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>
+                ` : `
+                <td class="amount-cell expense-color">-${client.total_expenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>
+                `}
               </tr>
-            ` : ''}
+            `}).join('')}
           </tbody>
         </table>
 
@@ -325,25 +284,18 @@ export async function GET(request: Request) {
       </html>
     `;
 
-    // Puppeteer launch options
     let browser;
     if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
       const chromium = (await import('@sparticuz/chromium-min')).default;
       const puppeteer = (await import('puppeteer-core')).default;
-
-
-
       const CHROMIUM_PACK_URL = 'https://github.com/Sparticuz/chromium/releases/download/v148.0.0/chromium-v148.0.0-pack.x64.tar';
-
       let executablePath;
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         executablePath = await (chromium as any).executablePath(CHROMIUM_PACK_URL);
       } catch (pathError) {
-        console.error('Failed to get executable path:', pathError);
         throw new Error('Chromium binary path error: ' + (pathError as Error).message);
       }
-
       browser = await puppeteer.launch({
         args: [...chromium.args, '--font-render-hinting=none'],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -353,7 +305,6 @@ export async function GET(request: Request) {
         headless: (chromium as any).headless,
       });
     } else {
-      // Local development
       const localPuppeteer = (await import('puppeteer')).default;
       browser = await localPuppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -374,10 +325,7 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const cleanName = user.full_name.trim().replace(/\s+/g, '_');
-    const filename = isRtl
-      ? `تقرير_ملخص_${cleanName}.pdf`
-      : `summary_report_${cleanName}.pdf`;
+    const filename = locale === 'ar' ? 'تقرير_العملاء.pdf' : 'clients_report.pdf';
 
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
@@ -387,7 +335,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Error generating user summary PDF:', error);
+    console.error('Error generating clients PDF:', error);
     const msg = error instanceof Error ? error.message : String(error);
     return new NextResponse('Internal server error: ' + msg, { status: 500 });
   }

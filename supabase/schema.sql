@@ -496,3 +496,28 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- -----------------------------------------------------------------------
+-- Auto-grant all users access when a new client is created
+-- -----------------------------------------------------------------------
+-- When a client is inserted, a row is added to client_access for every
+-- existing user. This runs at the database level so it cannot be bypassed
+-- regardless of how the client was created (UI, API, migration, etc.).
+
+create or replace function public.grant_all_users_client_access()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  insert into public.client_access (user_id, client_id)
+  select id, new.id from public.users
+  on conflict do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_grant_all_users_client_access on public.clients;
+create trigger trg_grant_all_users_client_access
+  after insert on public.clients
+  for each row execute function public.grant_all_users_client_access();

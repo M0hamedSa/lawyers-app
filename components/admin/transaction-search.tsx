@@ -25,7 +25,8 @@ export function TransactionSearch({
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState(searchParams.get("query") || "");
-  const [date, setDate] = useState(searchParams.get("date") || "");
+  const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
+  const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
   const [type, setType] = useState(searchParams.get("type") || "");
   const [clientId, setClientId] = useState(searchParams.get("client_id") || "");
   const [caseId, setCaseId] = useState(searchParams.get("case_id") || "");
@@ -37,12 +38,13 @@ export function TransactionSearch({
   }
 
   const availableCases = clientId ? cases.filter((c) => c.client_id === clientId) : [];
-  const hasFilters = !!(query || date || type || clientId || caseId);
+  const hasFilters = !!(query || dateFrom || dateTo || type || clientId || caseId);
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (debouncedQuery) params.set("query", debouncedQuery);
-    if (date) params.set("date", date);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
     if (type) params.set("type", type);
     if (clientId) params.set("client_id", clientId);
     if (caseId) params.set("case_id", caseId);
@@ -51,11 +53,12 @@ export function TransactionSearch({
     if (newSearch !== searchParams.toString()) {
       router.push(`${pathname}?${newSearch}` as Route);
     }
-  }, [debouncedQuery, date, type, clientId, caseId, pathname, router, searchParams]);
+  }, [debouncedQuery, dateFrom, dateTo, type, clientId, caseId, pathname, router, searchParams]);
 
   const clearFilters = () => {
     setQuery("");
-    setDate("");
+    setDateFrom("");
+    setDateTo("");
     setType("");
     setClientId("");
     setCaseId("");
@@ -78,14 +81,33 @@ export function TransactionSearch({
         />
       </div>
 
-      {/* Date */}
-      <input
-        type="date"
-        className={`${inputClassName} w-full shrink-0 text-sm sm:w-36`}
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        title={t("filterByDate")}
-      />
+      {/* Date From */}
+      <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+        <label htmlFor="dateFrom" className="whitespace-nowrap text-sm text-ink-600 dark:text-ink-300">
+          {t("fromDate")}
+        </label>
+        <input
+          id="dateFrom"
+          type="date"
+          className={`${inputClassName} flex-1 text-sm sm:w-36 sm:flex-none`}
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+        />
+      </div>
+
+      {/* Date To */}
+      <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+        <label htmlFor="dateTo" className="whitespace-nowrap text-sm text-ink-600 dark:text-ink-300">
+          {t("toDate")}
+        </label>
+        <input
+          id="dateTo"
+          type="date"
+          className={`${inputClassName} flex-1 text-sm sm:w-36 sm:flex-none`}
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+        />
+      </div>
 
       {/* Type */}
       <select

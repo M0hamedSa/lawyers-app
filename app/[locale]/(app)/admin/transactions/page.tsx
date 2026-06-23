@@ -21,9 +21,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AdminTransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ query?: string; date?: string; type?: string; client_id?: string; case_id?: string }>;
+  searchParams: Promise<{ query?: string; dateFrom?: string; dateTo?: string; type?: string; client_id?: string; case_id?: string }>;
 }) {
-  const { query, date, type, client_id, case_id } = await searchParams;
+  const { query, dateFrom, dateTo, type, client_id, case_id } = await searchParams;
   const user = await getCurrentUser();
 
   if (user?.role !== "superadmin") {
@@ -53,7 +53,8 @@ export default async function AdminTransactionsPage({
 
   if (client_id) dbQuery = dbQuery.eq("client_id", client_id);
   if (case_id) dbQuery = dbQuery.eq("case_id", case_id);
-  if (date) dbQuery = dbQuery.eq("date", date);
+  if (dateFrom) dbQuery = dbQuery.gte("date", dateFrom);
+  if (dateTo) dbQuery = dbQuery.lte("date", dateTo);
   if (type === "payment" || type === "expense" || type === "office") {
     dbQuery = dbQuery.eq("type", type);
   }
@@ -91,6 +92,7 @@ export default async function AdminTransactionsPage({
   const tCommonTable = {
     payment: tCommon("payment"),
     expense: tCommon("expense"),
+    office: tCommon("office"),
     balance: tCommon("balance"),
   };
   const tAdminTable = {
@@ -106,6 +108,42 @@ export default async function AdminTransactionsPage({
 
   const totalPayments = transactions.reduce((acc, t) => acc + (t.type === "payment" ? Number(t.amount) : 0), 0);
   const totalExpenses = transactions.reduce((acc, t) => acc + ((t.type === "expense" || t.type === "office") ? Number(t.amount) : 0), 0);
+
+  let totalProfit = transactions.reduce((acc, t) => acc + (t.type === "profit" ? Number(t.amount) : 0), 0);
+
+  if (case_id) {
+    const { data: caseData } = await supabase.from('cases').select('profit_amount, clients!inner(profit_type)').eq('id', case_id).single();
+    if (caseData) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const clientRef = caseData.clients as any;
+      if (clientRef?.profit_type === 'per_case') {
+        totalProfit += (Number(caseData.profit_amount) || 0);
+      }
+    }
+  } else if (client_id) {
+    const { data: casesData } = await supabase.from('cases').select('profit_amount, clients!inner(profit_type)').eq('client_id', client_id);
+    if (casesData) {
+      casesData.forEach(c => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const clientRef = c.clients as any;
+        if (clientRef?.profit_type === 'per_case') {
+          totalProfit += (Number(c.profit_amount) || 0);
+        }
+      });
+    }
+  } else {
+    // Grand total for all per_case clients in the system
+    const { data: allCasesData } = await supabase.from('cases').select('profit_amount, clients!inner(profit_type)');
+    if (allCasesData) {
+      allCasesData.forEach(c => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const clientRef = c.clients as any;
+        if (clientRef?.profit_type === 'per_case') {
+          totalProfit += (Number(c.profit_amount) || 0);
+        }
+      });
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -124,12 +162,19 @@ export default async function AdminTransactionsPage({
       <TransactionSearch clients={clientsList} cases={casesList} />
 
       {transactions.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <FinanceMetric
             label={tAdminTable.title === "المسؤول" ? "إجمالي الدفعات" : "Total Payments"}
             value={formatCurrency(totalPayments, locale)}
             tone="payment"
             rawValue={totalPayments}
+            locale={locale}
+          />
+          <FinanceMetric
+            label={tAdminTable.title === "المسؤول" ? "إجمالي الاتعاب" : "Total Profit"}
+            value={formatCurrency(totalProfit, locale)}
+            tone="payment"
+            rawValue={totalProfit}
             locale={locale}
           />
           <FinanceMetric

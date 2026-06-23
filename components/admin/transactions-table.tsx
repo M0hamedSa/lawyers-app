@@ -122,7 +122,7 @@ export function TransactionsTable({
                 if (t.type === "profit") {
                   return (
                     <span className="inline-flex rounded-md px-2 py-1 text-xs font-semibold capitalize bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                      {tAdmin.title === "المسؤول" ? "أرباح" : "Profit"}
+                      {tAdmin.title === "المسؤول" ? "اتعاب" : "Profit"}
                     </span>
                   );
                 }

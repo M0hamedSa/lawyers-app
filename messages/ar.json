@@ -107,16 +107,16 @@
       "expenses": "المصروفات",
       "balance": "الرصيد",
       "status": "الحالة",
-      "profitDetails": "تفاصيل الربح"
+      "profitDetails": "تفاصيل الاتعاب"
     },
     "form": {
       "name": "الاسم",
       "phone": "رقم الهاتف",
       "email": "البريد الإلكتروني",
-      "profitType": "نوع الربح",
+      "profitType": "نوع الاتعاب",
       "monthly": "شهري",
-      "perCase": "لكل قضية",
-      "profitAmount": "مبلغ الربح",
+      "perCase": "لكل مهمة",
+      "profitAmount": "مبلغ الاتعاب",
       "status": "الحالة",
       "active": "نشط",
       "inactive": "غير نشط",
@@ -125,35 +125,35 @@
     }
   },
   "Cases": {
-    "title": "القضايا",
-    "newCase": "قضية جديدة",
-    "editCase": "تعديل القضية",
-    "deleteCase": "حذف القضية",
-    "deleteConfirm": "هل أنت متأكد من حذف هذه القضية؟ سيتم حذف جميع المعاملات المرتبطة بها.",
-    "empty": "لا يوجد قضايا بعد.",
+    "title": "المهام",
+    "newCase": "مهمة جديدة",
+    "editCase": "تعديل المهمة",
+    "deleteCase": "حذف المهمة",
+    "deleteConfirm": "هل أنت متأكد من حذف هذه المهمة؟ سيتم حذف جميع المعاملات المرتبطة بها.",
+    "empty": "لا يوجد مهام بعد.",
     "columns": {
-      "title": "العنوان",
+      "title": "المهمة",
       "status": "الحالة",
-      "profit": "قيمة الربح",
+      "profit": "قيمة الاتعاب",
       "payments": "الدفعات",
       "expenses": "المصروفات",
       "balance": "الرصيد"
     },
     "form": {
-      "title": "عنوان القضية",
+      "title": "اسم المهمة",
       "description": "الوصف",
-      "profitAmount": "قيمة الربح",
-      "saveCase": "حفظ القضية"
+      "profitAmount": "قيمة الاتعاب",
+      "saveCase": "حفظ المهمة"
     },
     "status": {
       "open": "مفتوحة",
       "closed": "مغلقة"
     },
-    "exportCaseReport": "تصدير تقرير القضية",
-    "exportClientReport": "تصدير تقرير العميل (مفصل بالقضايا)",
-    "lockedCase": "هذه القضية مغلقة. لا يمكن إضافة معاملات جديدة.",
+    "exportCaseReport": "تصدير تقرير المهمة",
+    "exportClientReport": "تصدير تقرير العميل (مفصل بالمهام)",
+    "lockedCase": "هذه المهمة مغلقة. لا يمكن إضافة معاملات جديدة.",
     "lockedClient": "هذا العميل غير نشط. لا يمكن إضافة معاملات جديدة.",
-    "lockedHint": "يمكنك إعادة فتحها عن طريق تعديل حالة القضية أو العميل."
+    "lockedHint": "يمكنك إعادة فتحها عن طريق تعديل حالة المهمة أو العميل."
   },
   "ClientDetails": {
     "overview": "نظرة عامة",
@@ -163,9 +163,9 @@
     "totalPayments": "إجمالي الدفعات",
     "totalExpenses": "إجمالي المصروفات",
     "currentBalance": "الرصيد الحالي",
-    "monthlyProfit": "الربح الشهري",
-    "totalProfit": "إجمالي الربح",
-    "caseProfit": "ربح القضية",
+    "monthlyProfit": "الاتعاب الشهرية",
+    "totalProfit": "إجمالي الاتعاب",
+    "caseProfit": "اتعاب المهمة",
     "clientOverview": "نظرة عامة على العميل",
     "transactions": "المعاملات",
     "balance": "الرصيد",
@@ -210,9 +210,11 @@
     },
     "search": "بحث في المعاملات...",
     "filterByDate": "تصفية حسب التاريخ",
+    "fromDate": "من تاريخ",
+    "toDate": "إلى تاريخ",
     "allDates": "جميع التواريخ",
     "allClients": "جميع العملاء",
-    "allCases": "جميع القضايا",
+    "allCases": "جميع المهام",
     "clearFilters": "مسح الفلاتر",
     "noResults": "لا توجد معاملات تطابق بحثك.",
     "allTypes": "جميع الأنواع"

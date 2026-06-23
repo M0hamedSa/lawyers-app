@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/supabase/queries';
-import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser, getClient, getCases } from '@/lib/supabase/queries';
 import fs from 'fs';
 import path from 'path';
 
-export const maxDuration = 60; // Allow up to 60 seconds for PDF generation
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   try {
@@ -14,18 +13,16 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('query') || '';
-    const dateFrom = searchParams.get('dateFrom') || '';
-    const dateTo = searchParams.get('dateTo') || '';
-    const type = searchParams.get('type') || '';
-    const clientId = searchParams.get('client_id') || '';
-    const caseId = searchParams.get('case_id') || '';
+    const clientId = searchParams.get('client_id');
     const locale = searchParams.get('locale') || 'en';
+
+    if (!clientId) {
+      return new NextResponse('Missing client_id', { status: 400 });
+    }
     if (!['en', 'ar'].includes(locale)) {
       return new NextResponse('Invalid locale', { status: 400 });
     }
 
-    // Load translations
     const messagesPath = path.join(process.cwd(), 'messages', `${locale}.json`);
     const messages = JSON.parse(fs.readFileSync(messagesPath, 'utf8'));
     const t = (key: string): string => {
@@ -42,123 +39,18 @@ export async function GET(request: Request) {
     };
 
     const escapeHtml = (s: string): string =>
-      s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+      s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;') : '';
 
-    const supabase = await createClient();
-    let dbQuery = supabase
-      .from("transactions")
-      .select("*, clients(name, profit, profit_type), cases(title), users!transactions_created_by_fkey(full_name)")
-      .order("date", { ascending: false });
+    const client = await getClient(clientId);
+    const cases = await getCases(clientId);
 
-    if (user.role !== "superadmin") {
-      dbQuery = dbQuery.eq('created_by', user.id);
-    }
-
-    if (clientId) {
-      dbQuery = dbQuery.eq('client_id', clientId);
-      if (user.role !== 'superadmin') {
-        dbQuery = dbQuery.neq('type', 'payment');
-      }
-    }
-    if (caseId) {
-      dbQuery = dbQuery.eq('case_id', caseId);
-    }
-    if (dateFrom) dbQuery = dbQuery.gte('date', dateFrom);
-    if (dateTo) dbQuery = dbQuery.lte('date', dateTo);
-    if (type === 'payment' || type === 'expense') {
-      dbQuery = dbQuery.eq('type', type);
-    }
-
-    const { data: transactions, error: dbError } = await dbQuery;
-
-    if (dbError) throw new Error(dbError.message);
-
-    // Apply text search filter if present (Supabase text search is more complex, so we'll keep this part in JS for simplicity or use .ilike)
-    let filteredTransactions = transactions || [];
-    if (query) {
-      const q = query.toLowerCase();
-      filteredTransactions = filteredTransactions.filter(t =>
-        t.clients.name.toLowerCase().includes(q) ||
-        (t.users?.full_name || "").toLowerCase().includes(q) ||
-        (t.description || "").toLowerCase().includes(q)
-      );
-    }
-
-    const transactionsToReport = filteredTransactions;
-
-    if (transactionsToReport.length === 0) {
+    if (cases.length === 0) {
       return new NextResponse(JSON.stringify({ error: 'NO_DATA' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
-    let totalIncome = 0;
-    let totalExpense = 0;
-    let totalProfit = 0;
-
-    transactionsToReport.forEach(t => {
-      if (t.type === 'profit') {
-        totalProfit += Number(t.amount);
-      } else if (t.type === 'payment') {
-        totalIncome += Number(t.amount);
-      } else if (t.type === 'expense') {
-        totalExpense += Number(t.amount);
-      }
-    });
-
-    if (user.role !== 'superadmin') {
-      totalIncome = user.cash_advance || 0;
-    }
-
     const isSuperAdmin = user.role === 'superadmin';
-
-    const firstCardLabel = t('Dashboard.totalPayments') || 'Total Payments';
-    const firstCardValue = totalIncome;
-
     const isRtl = locale === 'ar';
-    let clientName = '';
-    let caseTitle = '';
-
-    if (caseId) {
-      const { data: caseData } = await supabase.from('cases').select('title, profit_amount, clients!inner(name, profit_type)').eq('id', caseId).single();
-      if (caseData) {
-        caseTitle = caseData.title;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const clientRef = caseData.clients as any;
-        clientName = clientRef?.name || '';
-        if (clientRef?.profit_type === 'per_case') {
-          totalProfit += (Number(caseData.profit_amount) || 0);
-        }
-      }
-    } else if (clientId) {
-      const { data: clientData } = await supabase.from('clients').select('name, profit_type').eq('id', clientId).single();
-      if (clientData) {
-        clientName = clientData.name;
-        if (clientData.profit_type === 'per_case') {
-          const { data: casesData } = await supabase.from('cases').select('profit_amount').eq('client_id', clientId);
-          totalProfit += (casesData || []).reduce((acc, c) => acc + (Number(c.profit_amount) || 0), 0);
-        }
-      }
-    } else {
-      clientName = transactionsToReport[0].clients?.name || '';
-      caseTitle = transactionsToReport[0].cases?.title || '';
-      // Grand total for all per_case clients in the system
-      const { data: allCasesData } = await supabase.from('cases').select('profit_amount, clients!inner(profit_type)');
-      if (allCasesData) {
-        allCasesData.forEach(c => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const clientRef = c.clients as any;
-          if (clientRef?.profit_type === 'per_case') {
-            totalProfit += (Number(c.profit_amount) || 0);
-          }
-        });
-      }
-    }
-
-    const fallbackTitle = t('Admin.transactionsLog') || 'Transaction Logs';
-    const reportTitle = caseId
-      ? (clientName && caseTitle ? `${clientName} — ${caseTitle}` : caseTitle || clientName || fallbackTitle)
-      : clientId
-      ? (clientName || fallbackTitle)
-      : fallbackTitle;
+    const reportTitle = `${client.name} — ${t('Cases.title') || 'Cases'}`;
 
     const logoPath = path.join(process.cwd(), 'public', 'logo.png');
     const logoSrc = fs.existsSync(logoPath)
@@ -166,6 +58,23 @@ export async function GET(request: Request) {
       : '';
 
     const exportedAt = `${user.full_name} · ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+
+    let balance = 0;
+    let displayPayments = 0;
+    const displayExpenses = client.total_expenses;
+
+    // For per_case clients, total_profit is in cases.profit_amount; for monthly it's in profit transactions
+    const totalProfit = client.profit_type === 'per_case'
+      ? cases.reduce((sum, c) => sum + (Number(c.profit_amount) || 0), 0)
+      : client.total_profit;
+
+    if (isSuperAdmin) {
+      displayPayments = client.total_payments;
+      balance = displayPayments - displayExpenses;
+    } else {
+      displayPayments = user.cash_advance || 0;
+      balance = displayPayments - displayExpenses;
+    }
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -307,6 +216,16 @@ export async function GET(request: Request) {
           .payment { color: #059669; }
           .expense { color: #dc2626; }
           .profit { color: #1d4ed8; }
+          .status-badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 9999px;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: 600;
+          }
+          .status-open { background: #dcfce7; color: #166534; }
+          .status-closed { background: #f3f4f6; color: #374151; }
           
           .footer {
             position: fixed;
@@ -340,8 +259,8 @@ export async function GET(request: Request) {
         <div class="summary-strip">
           ${isSuperAdmin ? `
           <div class="summary-item">
-            <div class="summary-label">${firstCardLabel}</div>
-            <div class="summary-value income">+${firstCardValue.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-label">${t('ClientDetails.totalPayments') || 'Total Payments'}</div>
+            <div class="summary-value income">+${displayPayments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-item">
             <div class="summary-label">${locale === 'ar' ? 'إجمالي الاتعاب' : 'Total Profit'}</div>
@@ -350,11 +269,11 @@ export async function GET(request: Request) {
           ` : ''}
           <div class="summary-item">
             <div class="summary-label">${isSuperAdmin ? t('Dashboard.totalExpenses') : (t('Common.myExpenses') || 'My Expenses')}</div>
-            <div class="summary-value expense">-${totalExpense.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-value expense">-${displayExpenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
           <div class="summary-item">
             <div class="summary-label">${t('Dashboard.totalBalance')}</div>
-            <div class="summary-value ${(totalIncome - totalExpense) >= 0 ? 'balance-positive' : 'balance-negative'}">${(totalIncome - totalExpense).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+            <div class="summary-value ${balance >= 0 ? 'balance-positive' : 'balance-negative'}">${balance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
         </div>
 
@@ -362,31 +281,26 @@ export async function GET(request: Request) {
           <thead>
             <tr>
               <th style="width: 40px; text-align: center;">#</th>
-              <th>${t('Transaction.columns.date')}</th>
-              <th>${t('Clients.columns.client')}</th>
-              ${!caseId ? `<th>${t('Cases.title') || 'Case'}</th>` : ''}
-              <th>${t('Transaction.columns.type')}</th>
-              <th>${t('Transaction.columns.description')}</th>
-              <th class="amount-cell">${t('Transaction.columns.amount')}</th>
-              <th>${t('Transaction.columns.createdBy')}</th>
+              <th>${t('Cases.columns.title') || 'Title'}</th>
+              <th>${t('Cases.columns.status') || 'Status'}</th>
+              ${isSuperAdmin && client.profit_type === 'per_case' ? `<th class="amount-cell">${t('Cases.columns.profit') || 'Profit'}</th>` : ''}
+              ${isSuperAdmin ? `<th class="amount-cell">${t('Cases.columns.payments') || 'Payments'}</th>` : ''}
+              <th class="amount-cell">${t('Cases.columns.expenses') || 'Expenses'}</th>
+              ${isSuperAdmin ? `<th class="amount-cell">${t('Cases.columns.balance') || 'Balance'}</th>` : ''}
             </tr>
           </thead>
           <tbody>
-            ${transactionsToReport.map((t_row, index) => `
+            ${cases.map((c, index) => `
               <tr>
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
-                <td>${new Date(t_row.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                <td>${escapeHtml(t_row.clients?.name || '')}</td>
-                ${!caseId ? `<td>${escapeHtml(t_row.cases?.title || '-')}</td>` : ''}
-                <td>${t_row.type === 'profit' ? (locale === 'ar' ? 'اتعاب' : 'Profit') : t_row.type === 'payment' ? t('Common.payment') : t_row.type === 'office' ? t('Common.office') : t('Common.expense')}</td>
-                <td>${escapeHtml(t_row.description)}</td>
-                <td class="amount-cell ${t_row.type === 'profit' ? 'profit' : (t_row.type === 'payment' ? 'payment' : 'expense')}">
-                  ${t_row.type === 'profit' || t_row.type === 'payment' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
-                </td>
-                <td>${escapeHtml(t_row.users?.full_name || (t_row.type === 'profit' ? (locale === 'ar' ? 'النظام' : 'System') : '-'))}</td>
+                <td>${escapeHtml(c.title)}</td>
+                <td><span class="status-badge ${c.status === 'open' ? 'status-open' : 'status-closed'}">${t('Cases.status.' + c.status)}</span></td>
+                ${isSuperAdmin && client.profit_type === 'per_case' ? `<td class="amount-cell profit">${c.profit_amount ? '+' + c.profit_amount.toLocaleString(locale, { style: 'currency', currency: 'EGP' }) : '—'}</td>` : ''}
+                ${isSuperAdmin ? `<td class="amount-cell payment">${c.total_payments > 0 ? '+' : ''}${c.total_payments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>` : ''}
+                <td class="amount-cell expense">${c.total_expenses > 0 ? '-' : ''}${c.total_expenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>
+                ${isSuperAdmin ? `<td class="amount-cell">${c.balance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>` : ''}
               </tr>
             `).join('')}
-            ${transactionsToReport.length === 0 ? `<tr><td colspan="${!caseId ? 8 : 7}" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults')}</td></tr>` : ''}
           </tbody>
         </table>
 
@@ -403,11 +317,6 @@ export async function GET(request: Request) {
       const chromium = (await import('@sparticuz/chromium-min')).default;
       const puppeteer = (await import('puppeteer-core')).default;
 
-      // Register Arabic font for production
-
-
-      // When using @sparticuz/chromium-min, we must provide a remote URL to the chromium binary pack
-      // We use x64 as it's the standard for Vercel serverless functions
       const CHROMIUM_PACK_URL = 'https://github.com/Sparticuz/chromium/releases/download/v148.0.0/chromium-v148.0.0-pack.x64.tar';
 
       let executablePath;
@@ -428,7 +337,6 @@ export async function GET(request: Request) {
         headless: (chromium as any).headless,
       });
     } else {
-      // Local development
       const localPuppeteer = (await import('puppeteer')).default;
       browser = await localPuppeteer.launch({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -440,7 +348,6 @@ export async function GET(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' as any });
 
-    // Wait for fonts to be loaded
     await page.evaluateHandle('document.fonts.ready');
 
     const pdfBuffer = await page.pdf({
@@ -451,11 +358,7 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const generatedFilename = caseId
-      ? (locale === 'ar' ? `تقرير_مهمة_${caseTitle || 'بدون_اسم'}.pdf` : `case_${caseTitle || 'unnamed'}_report.pdf`)
-      : clientId
-      ? (locale === 'ar' ? `تقرير_عميل_${clientName || 'بدون_اسم'}.pdf` : `client_${clientName || 'unnamed'}_report.pdf`)
-      : (locale === 'ar' ? "تقرير_المعاملات.pdf" : "transactions_report.pdf");
+    const generatedFilename = locale === 'ar' ? `تقرير_مهام_عميل_${client.name}.pdf` : `client_${client.name}_cases_report.pdf`;
 
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,

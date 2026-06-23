@@ -2,46 +2,24 @@
 
 import { useState } from "react";
 import { Download, Loader2, Info } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import { ActionButton } from "@/components/ui/action-button";
 
-export function ExportTransactionsButton({ clientId, caseId }: { clientId?: string; caseId?: string }) {
+export function ExportCasesButton({ clientId }: { clientId: string }) {
   const [isExporting, setIsExporting] = useState(false);
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   
-  const searchParams = useSearchParams();
   const t = useTranslations("Admin");
   const locale = useLocale();
 
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      const url = new URL("/api/export-transactions", window.location.origin);
-      
-      const query = searchParams.get("query");
-      if (query) url.searchParams.set("query", query);
-      
-      const dateFrom = searchParams.get("dateFrom");
-      if (dateFrom) url.searchParams.set("dateFrom", dateFrom);
-
-      const dateTo = searchParams.get("dateTo");
-      if (dateTo) url.searchParams.set("dateTo", dateTo);
-
-      const type = searchParams.get("type");
-      if (type) url.searchParams.set("type", type);
-
+      const url = new URL("/api/export-client-cases", window.location.origin);
       url.searchParams.set("locale", locale);
-
-      if (clientId) {
-        url.searchParams.set("client_id", clientId);
-      }
-
-      if (caseId) {
-        url.searchParams.set("case_id", caseId);
-      }
+      url.searchParams.set("client_id", clientId);
 
       const response = await fetch(url.toString());
 
@@ -50,7 +28,7 @@ export function ExportTransactionsButton({ clientId, caseId }: { clientId?: stri
       if (contentType.includes("application/json")) {
         const errData = await response.json();
         if (errData.error === "NO_DATA") {
-          setErrorMessage(locale === 'ar' ? "لا توجد بيانات متاحة لهذا التقرير." : "No data available for this report.");
+          setErrorMessage(locale === 'ar' ? "لا توجد مهام متاحة لهذا العميل." : "No cases available for this client.");
           setErrorModalOpen(true);
           return;
         }
@@ -68,7 +46,7 @@ export function ExportTransactionsButton({ clientId, caseId }: { clientId?: stri
       a.href = downloadUrl;
       
       const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = locale === 'ar' ? "تقرير_المعاملات.pdf" : "transactions_report.pdf";
+      let filename = locale === 'ar' ? "تقرير_المهام.pdf" : "cases_report.pdf";
       
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);

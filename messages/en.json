@@ -210,6 +210,8 @@
     },
     "search": "Search transactions...",
     "filterByDate": "Filter by date",
+    "fromDate": "From date",
+    "toDate": "To date",
     "allDates": "All dates",
     "allClients": "All clients",
     "allCases": "All cases",

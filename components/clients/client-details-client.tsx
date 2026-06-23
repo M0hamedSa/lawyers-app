@@ -18,7 +18,7 @@ import type {
 } from "@/lib/supabase/types";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { encodeId } from "@/lib/id-utils";
-import { ExportTransactionsButton } from "@/components/admin/export-transactions-button"; // Need to update this to client/cases export later
+import { ExportCasesButton } from "@/components/clients/export-cases-button";
 import { FadeInBox, StaggerContainer, CountUpNumber } from "@/components/ui/animated";
 import { CashFlowChart } from "@/components/charts/cash-flow-chart";
 import { ClientBreakdownChart } from "@/components/charts/client-breakdown-chart";
@@ -269,7 +269,7 @@ export function ClientDetailsClient({
             </p>
           </div>
           <div className="flex w-full shrink-0 flex-col-reverse gap-2 sm:w-auto sm:flex-row-reverse">
-            <ExportTransactionsButton clientId={client.id} />
+            <ExportCasesButton clientId={client.id} />
             <ActionButton
               className="w-full shrink-0 sm:w-auto"
               onClick={() => {

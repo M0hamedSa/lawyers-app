@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { ClientWithSummary, ProfitType } from "@/lib/supabase/types";
 import { formatCurrency } from "@/lib/utils";
 import { encodeId } from "@/lib/id-utils";
+import { ExportClientsButton } from "@/components/clients/export-clients-button";
 
 type ClientForm = {
   id?: string;
@@ -182,12 +183,15 @@ export function ClientsPageClient({
             {t("heading")}
           </h1>
         </div>
-        {(userRole === "admin" || userRole === "superadmin") && (
-          <ActionButton className="w-full shrink-0 sm:w-auto" onClick={openCreate}>
-            <Plus className="size-4" aria-hidden />
-            {t("newClient")}
-          </ActionButton>
-        )}
+        <div className="flex items-center gap-2">
+          <ExportClientsButton />
+          {(userRole === "admin" || userRole === "superadmin") && (
+            <ActionButton className="w-full shrink-0 sm:w-auto" onClick={openCreate}>
+              <Plus className="size-4" aria-hidden />
+              {t("newClient")}
+            </ActionButton>
+          )}
+        </div>
       </div>
 
       {error ? (

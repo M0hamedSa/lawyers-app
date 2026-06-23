@@ -2,55 +2,31 @@
 
 import { useState } from "react";
 import { Download, Loader2, Info } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { Modal } from "@/components/ui/modal";
 import { ActionButton } from "@/components/ui/action-button";
 
-export function ExportTransactionsButton({ clientId, caseId }: { clientId?: string; caseId?: string }) {
+export function ExportClientsButton() {
   const [isExporting, setIsExporting] = useState(false);
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  
-  const searchParams = useSearchParams();
+
   const t = useTranslations("Admin");
   const locale = useLocale();
 
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      const url = new URL("/api/export-transactions", window.location.origin);
-      
-      const query = searchParams.get("query");
-      if (query) url.searchParams.set("query", query);
-      
-      const dateFrom = searchParams.get("dateFrom");
-      if (dateFrom) url.searchParams.set("dateFrom", dateFrom);
-
-      const dateTo = searchParams.get("dateTo");
-      if (dateTo) url.searchParams.set("dateTo", dateTo);
-
-      const type = searchParams.get("type");
-      if (type) url.searchParams.set("type", type);
-
+      const url = new URL("/api/export-clients", window.location.origin);
       url.searchParams.set("locale", locale);
-
-      if (clientId) {
-        url.searchParams.set("client_id", clientId);
-      }
-
-      if (caseId) {
-        url.searchParams.set("case_id", caseId);
-      }
 
       const response = await fetch(url.toString());
 
-      // Check for NO_DATA signal (returned as 200 + JSON to avoid console errors)
       const contentType = response.headers.get("Content-Type") ?? "";
       if (contentType.includes("application/json")) {
         const errData = await response.json();
         if (errData.error === "NO_DATA") {
-          setErrorMessage(locale === 'ar' ? "لا توجد بيانات متاحة لهذا التقرير." : "No data available for this report.");
+          setErrorMessage(locale === "ar" ? "لا يوجد عملاء لتصدير التقرير." : "No clients available to export.");
           setErrorModalOpen(true);
           return;
         }
@@ -66,17 +42,17 @@ export function ExportTransactionsButton({ clientId, caseId }: { clientId?: stri
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = downloadUrl;
-      
+
       const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = locale === 'ar' ? "تقرير_المعاملات.pdf" : "transactions_report.pdf";
-      
+      let filename = locale === "ar" ? "تقرير_العملاء.pdf" : "clients_report.pdf";
+
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
         if (filenameMatch && filenameMatch.length === 2) {
           filename = decodeURIComponent(filenameMatch[1]);
         }
       }
-      
+
       a.download = filename;
       document.body.appendChild(a);
       a.click();
@@ -85,7 +61,7 @@ export function ExportTransactionsButton({ clientId, caseId }: { clientId?: stri
     } catch (error) {
       console.error(error);
       const msg = error instanceof Error ? error.message : "Failed to export report. Please try again.";
-      setErrorMessage(locale === 'ar' ? `فشل تصدير التقرير: ${msg}` : `Failed to export report: ${msg}`);
+      setErrorMessage(locale === "ar" ? `فشل تصدير التقرير: ${msg}` : `Failed to export report: ${msg}`);
       setErrorModalOpen(true);
     } finally {
       setIsExporting(false);
@@ -94,8 +70,8 @@ export function ExportTransactionsButton({ clientId, caseId }: { clientId?: stri
 
   return (
     <>
-      <button 
-        onClick={handleExport} 
+      <button
+        onClick={handleExport}
         disabled={isExporting}
         className="inline-flex items-center gap-2 rounded-md border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-800 hover:bg-ink-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-ink-800 dark:bg-ink-950 dark:text-ink-100 dark:hover:bg-ink-950"
       >
@@ -107,9 +83,9 @@ export function ExportTransactionsButton({ clientId, caseId }: { clientId?: stri
         {t("exportReport")}
       </button>
 
-      <Modal 
-        title={locale === 'ar' ? "تنبيه" : "Notice"} 
-        open={errorModalOpen} 
+      <Modal
+        title={locale === "ar" ? "تنبيه" : "Notice"}
+        open={errorModalOpen}
         onClose={() => setErrorModalOpen(false)}
       >
         <div className="flex flex-col items-center justify-center gap-4 py-4 text-center">
@@ -118,7 +94,7 @@ export function ExportTransactionsButton({ clientId, caseId }: { clientId?: stri
           </div>
           <p className="text-body-md text-ink-800 dark:text-ink-100">{errorMessage}</p>
           <ActionButton onClick={() => setErrorModalOpen(false)} className="mt-2 min-w-[120px]">
-            {locale === 'ar' ? "حسناً" : "OK"}
+            {locale === "ar" ? "حسناً" : "OK"}
           </ActionButton>
         </div>
       </Modal>
