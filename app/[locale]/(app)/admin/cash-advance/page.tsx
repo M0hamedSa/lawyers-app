@@ -26,13 +26,33 @@ export default async function AdminCashAdvancePage({
   }
 
   const users = await getAllUsers();
+  const filteredUsers = users.filter(u => u.role !== "superadmin");
   
-  // Fetch all expenses to calculate totals
   const supabase = await createClient();
+  
+  // Fetch all cash advances
+  const { data: cashAdvancesResult } = await supabase
+    .from("cash_advances")
+    .select("*, users!cash_advances_user_id_fkey(full_name)")
+    .order("date", { ascending: false });
+
+  // Fetch all expenses to calculate totals
   const { data: transactions } = await supabase
     .from("transactions")
     .select("amount, created_by")
     .in("type", ["expense", "office"]);
+
+  const cashAdvances = (cashAdvancesResult || []).map(a => ({
+    id: a.id,
+    user_id: a.user_id,
+    amount: Number(a.amount),
+    description: a.description,
+    date: a.date,
+    created_by: a.created_by,
+    created_at: a.created_at,
+    updated_at: a.updated_at,
+    user_name: a.users?.full_name || "-"
+  }));
 
   // Aggregate expenses per user
   const userExpenses = (transactions || []).reduce((acc, t) => {
@@ -42,21 +62,25 @@ export default async function AdminCashAdvancePage({
     return acc;
   }, {} as Record<string, number>);
 
-  // Build the unified data array, excluding superadmins
-  const usersWithFinancials = users
-    .filter(u => u.role !== "superadmin")
-    .map(u => {
-      const totalExpenses = userExpenses[u.id] || 0;
-      const cashAdvance = u.cash_advance || 0;
-      return {
-        id: u.id,
-        full_name: u.full_name,
-        role: u.role,
-        cash_advance: cashAdvance,
-        total_expenses: totalExpenses,
-        balance: cashAdvance - totalExpenses
-      };
-    });
+  // Aggregate cash advances per user
+  const userAdvances = cashAdvances.reduce((acc, a) => {
+    acc[a.user_id] = (acc[a.user_id] || 0) + a.amount;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Build the unified user data array, excluding superadmins
+  const usersWithFinancials = filteredUsers.map(u => {
+    const totalExpenses = userExpenses[u.id] || 0;
+    const cashAdvance = userAdvances[u.id] || 0;
+    return {
+      id: u.id,
+      full_name: u.full_name,
+      role: u.role,
+      cash_advance: cashAdvance,
+      total_expenses: totalExpenses,
+      balance: cashAdvance - totalExpenses
+    };
+  });
 
   const tCashAdvance = await getTranslations("CashAdvance");
 
@@ -68,7 +92,9 @@ export default async function AdminCashAdvancePage({
       </div>
 
       <CashAdvanceManagement 
-        initialUsers={usersWithFinancials} 
+        initialUsers={usersWithFinancials}
+        initialAdvances={cashAdvances}
+        teamMembers={filteredUsers.map(u => ({ id: u.id, full_name: u.full_name }))}
       />
     </div>
   );

@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Download, Loader2, Info } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Download, Loader2, Info, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useDebounce } from "use-debounce";
+import type { Route } from "next";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { ActionButton } from "@/components/ui/action-button";
 import { Modal } from "@/components/ui/modal";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { inputClassName } from "@/components/ui/field";
 
 type OfficeTransaction = {
   id: string;
@@ -27,9 +31,39 @@ export function OfficeTransactionsClient({
   transactions: OfficeTransaction[];
   locale: string;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [query, setQuery] = useState(searchParams.get("query") || "");
+  const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
+  const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
+  const [debouncedQuery] = useDebounce(query, 500);
+
   const [isExporting, setIsExporting] = useState(false);
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const hasFilters = !!(query || dateFrom || dateTo);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedQuery) params.set("query", debouncedQuery);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+
+    const newSearch = params.toString();
+    if (newSearch !== searchParams.toString()) {
+      router.push(`${pathname}?${newSearch}` as Route);
+    }
+  }, [debouncedQuery, dateFrom, dateTo, pathname, router, searchParams]);
+
+  const clearFilters = () => {
+    setQuery("");
+    setDateFrom("");
+    setDateTo("");
+    router.push(pathname as Route);
+  };
 
   const handleExport = async () => {
     try {
@@ -101,19 +135,77 @@ export function OfficeTransactionsClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <ActionButton
-          onClick={handleExport}
-          variant="secondary"
-          disabled={isExporting}
-        >
-          {isExporting ? (
-            <Loader2 className="size-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
-          ) : (
-            <Download className="size-4 mr-2 rtl:mr-0 rtl:ml-2" />
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:flex-1">
+          {/* Search Input */}
+          <div className="relative col-span-2 min-w-0 sm:flex-1" style={{ minWidth: "160px" }}>
+            <div className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-400">
+              <Search className="size-3.5" />
+            </div>
+            <input
+              type="text"
+              placeholder={tTrans("search")}
+              className={`${inputClassName} ps-9 text-sm`}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Date From */}
+          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+            <label htmlFor="dateFrom" className="whitespace-nowrap text-sm text-ink-600 dark:text-ink-300">
+              {tTrans("fromDate")}
+            </label>
+            <input
+              id="dateFrom"
+              type="date"
+              className={`${inputClassName} flex-1 text-sm sm:w-36 sm:flex-none`}
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </div>
+
+          {/* Date To */}
+          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+            <label htmlFor="dateTo" className="whitespace-nowrap text-sm text-ink-600 dark:text-ink-300">
+              {tTrans("toDate")}
+            </label>
+            <input
+              id="dateTo"
+              type="date"
+              className={`${inputClassName} flex-1 text-sm sm:w-36 sm:flex-none`}
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+
+          {/* Clear Filters Button */}
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              title={tTrans("clearFilters")}
+              className="col-span-2 flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm text-ink-500 hover:bg-ink-100 hover:text-ink-700 dark:hover:bg-ink-800 dark:hover:text-ink-200 sm:col-span-1 sm:px-2"
+            >
+              <X className="size-4" />
+              <span className="sm:hidden">{tTrans("clearFilters")}</span>
+            </button>
           )}
-          {tAdmin("exportReport")}
-        </ActionButton>
+        </div>
+
+        <div className="shrink-0">
+          <ActionButton
+            onClick={handleExport}
+            variant="secondary"
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className="size-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
+            ) : (
+              <Download className="size-4 mr-2 rtl:mr-0 rtl:ml-2" />
+            )}
+            {tAdmin("exportReport")}
+          </ActionButton>
+        </div>
       </div>
 
       <Card>

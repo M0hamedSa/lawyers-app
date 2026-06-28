@@ -362,7 +362,7 @@ export function CaseDetailsClient({
       </FadeInBox>
       )}
 
-      <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {userRole === "superadmin" && (
           <FinanceMetric label={t("totalPayments") || "Total Payments"} value={formatCurrency(totals.payments, locale)} rawValue={totals.payments} tone="payment" locale={locale} />
         )}
@@ -372,13 +372,22 @@ export function CaseDetailsClient({
         )}
         <FinanceMetric label={t("currentBalance")} value={formatCurrency(balance, locale)} rawValue={balance} tone="balance" locale={locale} />
         {userRole === "superadmin" && client.profit_type === "per_case" && caseData.profit_amount ? (
-          <FinanceMetric
-            label={t("caseProfit") || "Case Profit"}
-            value={formatCurrency(caseData.profit_amount, locale)}
-            rawValue={caseData.profit_amount}
-            tone="payment"
-            locale={locale}
-          />
+          <>
+            <FinanceMetric
+              label={t("caseProfit") || "Case Profit"}
+              value={formatCurrency(caseData.profit_amount, locale)}
+              rawValue={caseData.profit_amount}
+              tone="payment"
+              locale={locale}
+            />
+            <FinanceMetric
+              label={locale === "ar" ? "صافي الحساب" : "Net Balance"}
+              value={formatCurrency(balance - caseData.profit_amount, locale)}
+              rawValue={balance - caseData.profit_amount}
+              tone="balance"
+              locale={locale}
+            />
+          </>
         ) : null}
       </StaggerContainer>
 
@@ -440,8 +449,8 @@ export function CaseDetailsClient({
             <label className="text-title-sm text-ink-800 dark:text-ink-100">
               {tTrans("columns.type")}
             </label>
-            <div className={cn("grid gap-2", userRole === "superadmin" ? "grid-cols-3" : "grid-cols-2")}>
-              {userRole === "superadmin" && (
+            <div className={cn("grid gap-2", form.type === "payment" ? "grid-cols-3" : "grid-cols-2")}>
+              {userRole === "superadmin" && form.type === "payment" && (
                 <label
                   className={cn(
                     "flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition",

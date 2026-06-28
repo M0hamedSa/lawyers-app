@@ -43,6 +43,17 @@ export type LedgerTransaction = {
   updated_at: string;
 };
 
+export type CashAdvance = {
+  id: string;
+  user_id: string;
+  amount: number;
+  description: string | null;
+  date: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ClientFinancialSummary = {
   client_id: string;
   total_payments: number;
@@ -110,6 +121,53 @@ export type Database = {
           cash_advance?: number;
         };
         Relationships: [];
+      };
+      cash_advances: {
+        Row: {
+          id: string;
+          user_id: string;
+          amount: number;
+          description: string | null;
+          date: string;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          amount: number;
+          description?: string | null;
+          date?: string;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          amount?: number;
+          description?: string | null;
+          date?: string;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cash_advances_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "cash_advances_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       clients: {
         Row: Client;

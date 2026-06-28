@@ -128,13 +128,13 @@ export async function getClientTransactions(clientId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("transactions")
-    .select("*, cases(title)")
+    .select("*, cases(title), users!transactions_created_by_fkey(full_name)")
     .eq("client_id", clientId)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []) as (LedgerTransaction & { cases: { title: string } | null })[];
+  return (data ?? []) as (LedgerTransaction & { cases: { title: string } | null; users: { full_name: string } | null })[];
 }
 
 export async function getCases(clientId: string) {
@@ -184,11 +184,19 @@ export async function getDashboardData() {
   let totalBalance = 0;
   let totalPayments = 0;
   let totalExpenses = 0;
+  let totalProfit = 0;
 
   if (currentUser?.role === "superadmin") {
     totalBalance = clients.reduce((sum, client) => sum + client.balance, 0);
     totalPayments = clients.reduce((sum, client) => sum + client.total_payments, 0);
     totalExpenses = clients.reduce((sum, client) => sum + client.total_expenses, 0);
+    
+    const monthlyProfit = clients.reduce((sum, client) => sum + client.total_profit, 0);
+    const { data: casesData } = await (await createClient())
+      .from("cases")
+      .select("profit_amount");
+    const casesProfit = (casesData || []).reduce((sum, c) => sum + (c.profit_amount || 0), 0);
+    totalProfit = monthlyProfit + casesProfit;
   } else {
     // For normal users, fetch their financials
     const financials = await getUserFinancials();
@@ -265,6 +273,7 @@ export async function getDashboardData() {
     totalBalance,
     totalPayments,
     totalExpenses,
+    totalProfit,
     userRole: currentUser?.role || null,
     chartData: {
       cashFlow,
@@ -294,12 +303,23 @@ export async function getCurrentUser() {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, role, full_name, cash_advance")
+    .select("id, role, full_name")
     .eq("id", user.id)
     .single();
 
   if (error) return null;
-  return data as { id: string; role: "superadmin" | "admin" | "user"; full_name: string; cash_advance: number };
+
+  const { data: advances } = await supabase
+    .from("cash_advances")
+    .select("amount")
+    .eq("user_id", user.id);
+
+  const cashAdvance = (advances || []).reduce((sum, a) => sum + Number(a.amount), 0);
+
+  return {
+    ...data,
+    cash_advance: cashAdvance
+  } as { id: string; role: "superadmin" | "admin" | "user"; full_name: string; cash_advance: number };
 }
 
 export async function getUserRole() {
@@ -312,14 +332,20 @@ export async function getUserFinancials() {
   if (!currentUser) return null;
 
   const supabase = await createClient();
-  const { data: transactions } = await supabase
-    .from("transactions")
-    .select("amount")
-    .eq("created_by", currentUser.id)
-    .in("type", ["expense", "office"]);
+  const [txResult, advanceResult] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("amount")
+      .eq("created_by", currentUser.id)
+      .in("type", ["expense", "office"]),
+    supabase
+      .from("cash_advances")
+      .select("amount")
+      .eq("user_id", currentUser.id)
+  ]);
 
-  const totalExpenses = (transactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
-  const cashAdvance = currentUser.cash_advance || 0;
+  const totalExpenses = (txResult.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
+  const cashAdvance = (advanceResult.data || []).reduce((sum, a) => sum + Number(a.amount), 0);
   const balance = cashAdvance - totalExpenses;
 
   return { cashAdvance, totalExpenses, balance };

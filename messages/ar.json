@@ -78,6 +78,7 @@
     "totalBalance": "الرصيد الإجمالي",
     "totalPayments": "إجمالي الدفعات",
     "totalExpenses": "إجمالي المصروفات",
+    "totalProfit": "إجمالي الاتعاب",
     "noTransactions": "لا توجد معاملات بعد."
   },
   "Charts": {
@@ -234,6 +235,9 @@
   },
   "CashAdvance": {
     "title": "إدارة العهد المالية",
+    "teamOverview": "ملخص الفريق",
+    "exportOverview": "تصدير الملخص",
+    "exportLog": "تصدير السجل",
     "subtitle": "إدارة ومتابعة العهد المالية لجميع أعضاء الفريق",
     "totalAdvances": "إجمالي العهد المالية",
     "totalUserExpenses": "إجمالي مصروفات المستخدمين",
@@ -246,8 +250,16 @@
     "currentBalance": "الرصيد الحالي",
     "editAdvance": "تعديل العهدة",
     "updateAdvance": "تحديث العهدة المالية",
+    "addAdvance": "إضافة عهدة مالية",
+    "deleteAdvance": "حذف سجل العهدة",
+    "deleteConfirm": "هل أنت متأكد من حذف سجل العهدة المالية هذا؟",
+    "selectUser": "اختر عضو الفريق",
+    "amount": "المبلغ",
+    "date": "التاريخ",
+    "description": "الوصف",
     "newAmount": "المبلغ الجديد",
     "noUsers": "لم يتم العثور على مستخدمين.",
+    "noAdvances": "لم يتم العثور على عهد مالية.",
     "reportTitle": "تقرير العهد المالية"
   },
   "UserManagement": {

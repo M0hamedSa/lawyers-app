@@ -78,6 +78,7 @@
     "totalBalance": "Total Balance",
     "totalPayments": "Total Payments",
     "totalExpenses": "Total Expenses",
+    "totalProfit": "Total Profit",
     "noTransactions": "No transactions yet."
   },
   "Charts": {
@@ -234,6 +235,9 @@
   },
   "CashAdvance": {
     "title": "Cash Advance Management",
+    "teamOverview": "Team Overview",
+    "exportOverview": "Export Overview",
+    "exportLog": "Export Advances Log",
     "subtitle": "Manage and track cash advances for all team members",
     "totalAdvances": "Total Cash Advances",
     "totalUserExpenses": "Total User Expenses",
@@ -246,8 +250,16 @@
     "currentBalance": "Current Balance",
     "editAdvance": "Edit Advance",
     "updateAdvance": "Update Cash Advance",
+    "addAdvance": "Add Cash Advance",
+    "deleteAdvance": "Delete Cash Advance",
+    "deleteConfirm": "Are you sure you want to delete this cash advance record?",
+    "selectUser": "Select Team Member",
+    "amount": "Amount",
+    "date": "Date",
+    "description": "Description",
     "newAmount": "New Amount",
     "noUsers": "No users found.",
+    "noAdvances": "No cash advances found.",
     "reportTitle": "Cash Advance Report"
   },
   "UserManagement": {

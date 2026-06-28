@@ -45,12 +45,22 @@ export async function GET(request: Request) {
     const { data: transactions } = await supabase
       .from("transactions")
       .select("amount, created_by")
-      .eq("type", "expense");
+      .in("type", ["expense", "office"]);
 
     const userExpenses = (transactions || []).reduce((acc, t_row) => {
       if (t_row.created_by) {
         acc[t_row.created_by] = (acc[t_row.created_by] || 0) + Number(t_row.amount);
       }
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Fetch all cash advances and aggregate per user
+    const { data: cashAdvancesData } = await supabase
+      .from("cash_advances")
+      .select("user_id, amount");
+
+    const userAdvances = (cashAdvancesData || []).reduce((acc, a) => {
+      acc[a.user_id] = (acc[a.user_id] || 0) + Number(a.amount);
       return acc;
     }, {} as Record<string, number>);
 
@@ -62,7 +72,7 @@ export async function GET(request: Request) {
       .filter(u => u.role !== 'superadmin')
       .map(u => {
         const expenses = userExpenses[u.id] || 0;
-        const advance = u.cash_advance || 0;
+        const advance = userAdvances[u.id] || 0;
         const balance = advance - expenses;
 
         totalAdvances += advance;
@@ -71,6 +81,7 @@ export async function GET(request: Request) {
 
         return {
           ...u,
+          cash_advance: advance,
           total_expenses: expenses,
           balance: balance
         };

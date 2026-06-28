@@ -162,7 +162,7 @@ export default async function AdminTransactionsPage({
       <TransactionSearch clients={clientsList} cases={casesList} />
 
       {transactions.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-5">
           <FinanceMetric
             label={tAdminTable.title === "المسؤول" ? "إجمالي الدفعات" : "Total Payments"}
             value={formatCurrency(totalPayments, locale)}
@@ -189,6 +189,13 @@ export default async function AdminTransactionsPage({
             value={formatCurrency(totalPayments - totalExpenses, locale)}
             tone="balance"
             rawValue={totalPayments - totalExpenses}
+            locale={locale}
+          />
+          <FinanceMetric
+            label={locale === "ar" ? "صافي الحساب" : "Net Balance"}
+            value={formatCurrency(totalPayments - totalExpenses - totalProfit, locale)}
+            tone="balance"
+            rawValue={totalPayments - totalExpenses - totalProfit}
             locale={locale}
           />
         </div>

@@ -17,10 +17,13 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 export default async function AdminOfficePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ query?: string; dateFrom?: string; dateTo?: string }>;
 }) {
   const { locale } = await params;
+  const { query, dateFrom, dateTo } = await searchParams;
   const currentUser = await getCurrentUser();
 
   if (currentUser?.role !== "superadmin") {
@@ -29,17 +32,34 @@ export default async function AdminOfficePage({
 
   const supabase = await createClient();
 
-  const { data: transactions, error } = await supabase
+  let dbQuery = supabase
     .from("transactions")
     .select("*, clients(name), cases(title), users!transactions_created_by_fkey(full_name)")
     .eq("type", "office")
     .order("date", { ascending: false });
 
+  if (dateFrom) dbQuery = dbQuery.gte("date", dateFrom);
+  if (dateTo) dbQuery = dbQuery.lte("date", dateTo);
+
+  const { data: transactionsData, error } = await dbQuery;
+
   if (error) throw new Error(error.message);
+
+  let transactions = transactionsData || [];
+  if (query) {
+    const q = query.toLowerCase();
+    transactions = transactions.filter(
+      (t) =>
+        (t.clients?.name || "").toLowerCase().includes(q) ||
+        (t.users?.full_name || "").toLowerCase().includes(q) ||
+        (t.description || "").toLowerCase().includes(q) ||
+        (t.cases?.title || "").toLowerCase().includes(q)
+    );
+  }
 
   const tAdmin = await getTranslations("Admin");
 
-  const totalOffice = (transactions || []).reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalOffice = transactions.reduce((sum, t) => sum + Number(t.amount), 0);
 
   return (
     <div className="space-y-6">
@@ -53,7 +73,7 @@ export default async function AdminOfficePage({
       </div>
 
       {transactions.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-1">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
           <FinanceMetric
             label={tAdmin("totalOffice")}
             value={formatCurrency(totalOffice, locale as string)}

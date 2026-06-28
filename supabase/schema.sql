@@ -521,3 +521,56 @@ drop trigger if exists trg_grant_all_users_client_access on public.clients;
 create trigger trg_grant_all_users_client_access
   after insert on public.clients
   for each row execute function public.grant_all_users_client_access();
+
+-- -----------------------------------------------------------------------
+-- Cash Advances Table
+-- -----------------------------------------------------------------------
+create table if not exists public.cash_advances (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  amount numeric(12, 2) not null check (amount > 0),
+  description text,
+  date date not null default current_date,
+  created_by uuid references public.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists cash_advances_user_id_idx on public.cash_advances (user_id);
+create index if not exists cash_advances_date_idx on public.cash_advances (date);
+
+drop trigger if exists cash_advances_set_updated_at on public.cash_advances;
+create trigger cash_advances_set_updated_at
+before update on public.cash_advances
+for each row execute function public.set_updated_at();
+
+-- Enable RLS
+alter table public.cash_advances enable row level security;
+
+-- RLS policies
+drop policy if exists "Superadmins can manage all cash advances" on public.cash_advances;
+create policy "Superadmins can manage all cash advances"
+on public.cash_advances
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role = 'superadmin'
+  )
+)
+with check (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role = 'superadmin'
+  )
+);
+
+drop policy if exists "Users can view their own cash advances" on public.cash_advances;
+create policy "Users can view their own cash advances"
+on public.cash_advances
+for select
+to authenticated
+using (
+  user_id = auth.uid()
+);

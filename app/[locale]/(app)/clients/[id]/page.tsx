@@ -62,6 +62,7 @@ export default async function ClientDetailsPage({ params }: { params: Promise<{ 
       <ClientDetailsClient
         client={client}
         initialCases={cases}
+        initialTransactions={transactions}
         currentUser={currentUser}
         userGlobalBalance={userFinancials?.balance}
         cashFlowData={cashFlowData}

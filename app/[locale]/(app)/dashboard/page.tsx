@@ -43,6 +43,12 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         )}
         <MetricCard tone="expense" label={data.userRole === "superadmin" ? t("totalExpenses") : tCommon("myExpenses")} value={formatCurrency(data.totalExpenses, locale)} rawValue={data.totalExpenses} />
         <MetricCard tone="balance" label={data.userRole === "superadmin" ? t("totalBalance") : tCommon("balance")} value={formatCurrency(data.totalBalance, locale)} rawValue={data.totalBalance} />
+        {data.userRole === "superadmin" && data.totalProfit > 0 && (
+          <>
+            <MetricCard tone="payment" label={t("totalProfit") || "Total Profit"} value={formatCurrency(data.totalProfit, locale)} rawValue={data.totalProfit} />
+            <MetricCard tone="balance" label={locale === "ar" ? "صافي الحساب" : "Net Balance"} value={formatCurrency(data.totalBalance - data.totalProfit, locale)} rawValue={data.totalBalance - data.totalProfit} />
+          </>
+        )}
       </StaggerContainer>
 
       <DashboardCharts chartData={data.chartData} locale={locale} userRole={data.userRole} />
