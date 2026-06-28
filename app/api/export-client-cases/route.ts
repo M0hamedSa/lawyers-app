@@ -275,6 +275,12 @@ export async function GET(request: Request) {
             <div class="summary-label">${t('Dashboard.totalBalance')}</div>
             <div class="summary-value ${balance >= 0 ? 'balance-positive' : 'balance-negative'}">${balance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          ${isSuperAdmin ? `
+          <div class="summary-item">
+            <div class="summary-label">${locale === 'ar' ? 'صافي الحساب' : 'Net Balance'}</div>
+            <div class="summary-value ${(balance - totalProfit) >= 0 ? 'balance-positive' : 'balance-negative'}">${(balance - totalProfit).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+          </div>
+          ` : ''}
         </div>
 
         <table>

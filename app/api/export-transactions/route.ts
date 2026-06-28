@@ -361,6 +361,10 @@ export async function GET(request: Request) {
             <div class="summary-label">${isSuperAdmin ? t('Dashboard.totalBalance') : (locale === 'ar' ? 'الرصيد الحالي' : 'Current Balance')}</div>
             <div class="summary-value ${(totalIncome - totalExpense) >= 0 ? 'balance-positive' : 'balance-negative'}">${(totalIncome - totalExpense).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          <div class="summary-item">
+            <div class="summary-label">${locale === 'ar' ? 'صافي الحساب' : 'Net Balance'}</div>
+            <div class="summary-value ${(totalIncome - totalExpense - totalProfit) >= 0 ? 'balance-positive' : 'balance-negative'}">${(totalIncome - totalExpense - totalProfit).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+          </div>
         </div>
 
         <table>

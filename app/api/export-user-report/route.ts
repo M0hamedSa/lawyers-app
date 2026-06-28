@@ -193,6 +193,7 @@ export async function GET(request: Request) {
           }
           .summary-value.income { color: #059669; }
           .summary-value.expense { color: #dc2626; }
+          .summary-value.profit { color: #1d4ed8; }
           .summary-value.balance-positive { color: var(--ink-900); }
           .summary-value.balance-negative { color: var(--ink-900); }
           
@@ -267,6 +268,10 @@ export async function GET(request: Request) {
             <div class="summary-label">${labelPayments}</div>
             <div class="summary-value income">+${data.totalPayments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          <div class="summary-item">
+            <div class="summary-label">${locale === 'ar' ? 'إجمالي الاتعاب' : 'Total Profit'}</div>
+            <div class="summary-value profit">+${data.totalProfit.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+          </div>
           ` : ''}
           <div class="summary-item">
             <div class="summary-label">${labelExpenses}</div>
@@ -276,6 +281,12 @@ export async function GET(request: Request) {
             <div class="summary-label">${labelBalance}</div>
             <div class="summary-value ${data.totalBalance >= 0 ? 'balance-positive' : 'balance-negative'}">${data.totalBalance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          ${isSuperAdmin ? `
+          <div class="summary-item">
+            <div class="summary-label">${locale === 'ar' ? 'صافي الحساب' : 'Net Balance'}</div>
+            <div class="summary-value ${(data.totalBalance - data.totalProfit) >= 0 ? 'balance-positive' : 'balance-negative'}">${(data.totalBalance - data.totalProfit).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
+          </div>
+          ` : ''}
         </div>
 
         <h3 style="margin-top: 40px; font-size: 16px; border-bottom: 1px solid var(--ink-100); padding-bottom: 8px;">
