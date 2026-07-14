@@ -717,19 +717,15 @@ function FinanceTab({
                 </span>
               ),
             },
-            ...(userRole === "superadmin"
-              ? [
-                  {
-                    key: "created_by",
-                    header: tTrans("columns.createdBy"),
-                    cell: (item: TransactionWithUser) => (
-                      <span className="text-ink-500 dark:text-ink-400">
-                        {item.users?.full_name || "-"}
-                      </span>
-                    ),
-                  },
-                ]
-              : []),
+            {
+              key: "created_by",
+              header: tTrans("columns.createdBy"),
+              cell: (item: TransactionWithUser) => (
+                <span className="text-ink-500 dark:text-ink-400">
+                  {item.users?.full_name || "-"}
+                </span>
+              ),
+            },
             {
               key: "actions",
               header: "",
