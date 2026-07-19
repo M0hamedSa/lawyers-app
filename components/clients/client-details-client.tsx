@@ -1148,7 +1148,7 @@ function FinanceTab({
                         : "bg-error-100 text-error-800 dark:bg-error-900/30 dark:text-error-400",
                   )}
                 >
-                  {item.type === "payment" ? tTrans("vouchers." + item.voucher_type) : tCommon(item.type)}
+                  {tTrans("vouchers." + item.voucher_type)}
                 </span>
               ),
             },

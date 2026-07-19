@@ -542,21 +542,19 @@ export function CaseDetailsClient({
             />
           </Field>
 
-          {form.type === "payment" && (
-            <Field label={tTrans("voucherType")}>
-              <select
-                className={inputClassName}
-                value={form.voucher_type}
-                onChange={(e) => setForm((c) => ({ ...c, voucher_type: e.target.value as VoucherType }))}
-              >
-                {(Object.entries(voucherLabels) as [VoucherType, string][]).map(([val]) => (
-                  <option key={val} value={val}>
-                    {tTrans(`vouchers.${val}`)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
+          <Field label={tTrans("voucherType")}>
+            <select
+              className={inputClassName}
+              value={form.voucher_type}
+              onChange={(e) => setForm((c) => ({ ...c, voucher_type: e.target.value as VoucherType }))}
+            >
+              {(Object.entries(voucherLabels) as [VoucherType, string][]).map(([val]) => (
+                <option key={val} value={val}>
+                  {tTrans(`vouchers.${val}`)}
+                </option>
+              ))}
+            </select>
+          </Field>
 
           <div className="flex justify-end gap-3 pt-2">
             <ActionButton type="button" variant="secondary" onClick={closeModal}>
@@ -693,7 +691,7 @@ function FinanceTab({
                         : "bg-error-100 text-error-800 dark:bg-error-900/30 dark:text-error-400",
                   )}
                 >
-                  {item.type === "payment" ? tTrans("vouchers." + item.voucher_type) : tCommon(item.type)}
+                  {tTrans("vouchers." + item.voucher_type)}
                 </span>
               ),
             },
