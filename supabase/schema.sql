@@ -33,7 +33,7 @@ end $$;
 
 do $$
 begin
-  create type public.voucher_type as enum ('cash', 'bank_transfer', 'check', 'card', 'other');
+  create type public.voucher_type as enum ('cash', 'bank_transfer', 'receipt', 'card', 'other');
 exception
   when duplicate_object then null;
 end $$;

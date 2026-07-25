@@ -575,7 +575,7 @@ export function ClientDetailsClient({
             >
               <option value="cash">{useTranslations("Transaction")("vouchers.cash")}</option>
               <option value="bank_transfer">{useTranslations("Transaction")("vouchers.bank_transfer")}</option>
-              <option value="check">{useTranslations("Transaction")("vouchers.check")}</option>
+              <option value="receipt">{useTranslations("Transaction")("vouchers.receipt")}</option>
               <option value="card">{useTranslations("Transaction")("vouchers.card")}</option>
               <option value="other">{useTranslations("Transaction")("vouchers.other")}</option>
             </select>

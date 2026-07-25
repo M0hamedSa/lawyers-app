@@ -45,7 +45,7 @@ const emptyTransaction: TransactionForm = {
 const voucherLabels: Record<VoucherType, string> = {
   cash: "Cash",
   bank_transfer: "Bank transfer",
-  check: "Check",
+  receipt: "Receipt",
   card: "Card",
   other: "Other",
 };

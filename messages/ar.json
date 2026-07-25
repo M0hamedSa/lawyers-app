@@ -205,7 +205,7 @@
     "vouchers": {
       "cash": "نقدي",
       "bank_transfer": "تحويل بنكي",
-      "check": "شيك",
+      "receipt": "إيصال",
       "card": "بطاقة",
       "other": "أخرى"
     },

@@ -205,7 +205,7 @@
     "vouchers": {
       "cash": "Cash",
       "bank_transfer": "Bank transfer",
-      "check": "Check",
+      "receipt": "Receipt",
       "card": "Card",
       "other": "Other"
     },
