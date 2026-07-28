@@ -100,9 +100,14 @@ export function OfficeTransactionsClient({
         locale === "ar" ? "تقرير_معاملات_المكتب.pdf" : "office_transactions_report.pdf";
 
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch && filenameMatch.length === 2) {
-          filename = decodeURIComponent(filenameMatch[1]);
+        const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+        if (utf8Match && utf8Match[1]) {
+          filename = decodeURIComponent(utf8Match[1]);
+        } else {
+          const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+          if (filenameMatch && filenameMatch[1] && filenameMatch[1] !== "report.pdf") {
+            filename = decodeURIComponent(filenameMatch[1]);
+          }
         }
       }
 

@@ -249,12 +249,17 @@ export function CashAdvanceManagement({
       a.href = downloadUrl;
       
       const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = locale === 'ar' ? "تقرير_السلف.pdf" : "cash_advance_report.pdf";
+      let filename = locale === 'ar' ? "تقرير_العهد_المالية.pdf" : "cash_advance_report.pdf";
       
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch && filenameMatch.length === 2) {
-          filename = decodeURIComponent(filenameMatch[1]);
+        const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+        if (utf8Match && utf8Match[1]) {
+          filename = decodeURIComponent(utf8Match[1]);
+        } else {
+          const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+          if (filenameMatch && filenameMatch[1] && filenameMatch[1] !== "report.pdf") {
+            filename = decodeURIComponent(filenameMatch[1]);
+          }
         }
       }
       
@@ -303,9 +308,14 @@ export function CashAdvanceManagement({
       let filename = locale === 'ar' ? "سجل_العهد_المالية.pdf" : "cash_advance_log_report.pdf";
       
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (filenameMatch && filenameMatch.length === 2) {
-          filename = decodeURIComponent(filenameMatch[1]);
+        const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+        if (utf8Match && utf8Match[1]) {
+          filename = decodeURIComponent(utf8Match[1]);
+        } else {
+          const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+          if (filenameMatch && filenameMatch[1] && filenameMatch[1] !== "report.pdf") {
+            filename = decodeURIComponent(filenameMatch[1]);
+          }
         }
       }
       

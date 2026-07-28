@@ -474,11 +474,27 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const generatedFilename = caseId
-      ? (locale === 'ar' ? `تقرير_مهمة_${caseTitle || 'بدون_اسم'}.pdf` : `case_${caseTitle || 'unnamed'}_report.pdf`)
-      : clientId
-      ? (locale === 'ar' ? `تقرير_عميل_${clientName || 'بدون_اسم'}.pdf` : `client_${clientName || 'unnamed'}_report.pdf`)
-      : (locale === 'ar' ? "تقرير_المعاملات.pdf" : "transactions_report.pdf");
+    const todayStr = new Date().toISOString().split('T')[0];
+    const firstRow = transactionsToReport[0];
+    const targetClient = clientName || firstRow?.clients?.name || '';
+    const targetCase = caseTitle || firstRow?.cases?.title || '';
+    const cleanClient = targetClient.trim().replace(/[\s/\\?%*:|"<>]+/g, '_');
+    const cleanCase = targetCase.trim().replace(/[\s/\\?%*:|"<>]+/g, '_');
+
+    let generatedFilename = "";
+    if (caseId && cleanCase) {
+      generatedFilename = locale === 'ar'
+        ? `تقرير_معاملات_مهمة_${cleanCase}_${todayStr}.pdf`
+        : `transactions_case_${cleanCase}_${todayStr}.pdf`;
+    } else if (clientId && cleanClient) {
+      generatedFilename = locale === 'ar'
+        ? `تقرير_معاملات_عميل_${cleanClient}_${todayStr}.pdf`
+        : `transactions_client_${cleanClient}_${todayStr}.pdf`;
+    } else {
+      generatedFilename = locale === 'ar'
+        ? `تقرير_كافة_المعاملات_${todayStr}.pdf`
+        : `all_transactions_report_${todayStr}.pdf`;
+    }
 
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,

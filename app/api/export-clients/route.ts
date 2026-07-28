@@ -325,7 +325,8 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const filename = locale === 'ar' ? 'تقرير_العملاء.pdf' : 'clients_report.pdf';
+    const todayStr = new Date().toISOString().split('T')[0];
+    const filename = locale === 'ar' ? `تقرير_قائمة_العملاء_${todayStr}.pdf` : `clients_list_report_${todayStr}.pdf`;
 
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,

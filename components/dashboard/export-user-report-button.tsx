@@ -47,7 +47,19 @@ export function ExportUserReportButton() {
       } else {
         const a = document.createElement("a");
         a.href = downloadUrl;
-        const filename = locale === 'ar' ? "ملخص_لوحة_التحكم.pdf" : "dashboard_summary_report.pdf";
+        const contentDisposition = response.headers.get("Content-Disposition");
+        let filename = locale === 'ar' ? "ملخص_لوحة_التحكم.pdf" : "dashboard_summary_report.pdf";
+        if (contentDisposition) {
+          const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+          if (utf8Match && utf8Match[1]) {
+            filename = decodeURIComponent(utf8Match[1]);
+          } else {
+            const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+            if (filenameMatch && filenameMatch[1] && filenameMatch[1] !== "report.pdf") {
+              filename = decodeURIComponent(filenameMatch[1]);
+            }
+          }
+        }
         a.download = filename;
         document.body.appendChild(a);
         a.click();

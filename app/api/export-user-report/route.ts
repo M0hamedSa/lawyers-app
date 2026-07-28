@@ -381,10 +381,11 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const cleanName = user.full_name.trim().replace(/\s+/g, '_');
+    const todayStr = new Date().toISOString().split('T')[0];
+    const cleanName = user.full_name.trim().replace(/[\s/\\?%*:|"<>]+/g, '_');
     const filename = isRtl
-      ? `تقرير_ملخص_${cleanName}.pdf`
-      : `summary_report_${cleanName}.pdf`;
+      ? `تقرير_ملخص_${cleanName}_${todayStr}.pdf`
+      : `summary_report_${cleanName}_${todayStr}.pdf`;
 
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,

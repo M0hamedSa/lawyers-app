@@ -376,7 +376,8 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const generatedFilename = locale === 'ar' ? "تقرير_العهد_المالية.pdf" : "cash_advance_report.pdf";
+    const todayStr = new Date().toISOString().split('T')[0];
+    const generatedFilename = locale === 'ar' ? `تقرير_العهد_المالية_${todayStr}.pdf` : `cash_advance_report_${todayStr}.pdf`;
 
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,

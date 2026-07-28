@@ -325,7 +325,8 @@ export async function GET(request: Request) {
 
     await browser.close();
 
-    const filename = isRtl ? 'تقرير_معاملات_المكتب.pdf' : 'office_transactions_report.pdf';
+    const todayStr = new Date().toISOString().split('T')[0];
+    const filename = isRtl ? `تقرير_معاملات_المكتب_${todayStr}.pdf` : `office_transactions_report_${todayStr}.pdf`;
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
