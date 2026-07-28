@@ -20,6 +20,7 @@ export async function GET(request: Request) {
     const type = searchParams.get('type') || '';
     const clientId = searchParams.get('client_id') || '';
     const caseId = searchParams.get('case_id') || '';
+    const caseStatus = searchParams.get('case_status') || '';
     const locale = searchParams.get('locale') || 'en';
     if (!['en', 'ar'].includes(locale)) {
       return new NextResponse('Invalid locale', { status: 400 });
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     let dbQuery = supabase
       .from("transactions")
-      .select("*, clients(name, profit, profit_type), cases(title), users!transactions_created_by_fkey(full_name)")
+      .select("*, clients(name, profit, profit_type), cases(title, status), users!transactions_created_by_fkey(full_name)")
       .order("date", { ascending: false });
 
     if (user.role !== "superadmin") {
@@ -82,6 +83,13 @@ export async function GET(request: Request) {
         (t.users?.full_name || "").toLowerCase().includes(q) ||
         (t.description || "").toLowerCase().includes(q)
       );
+    }
+
+    // Apply case_status filter if provided
+    if (caseStatus === 'open') {
+      filteredTransactions = filteredTransactions.filter(t => !t.case_id || t.cases?.status !== 'closed');
+    } else if (caseStatus === 'closed') {
+      filteredTransactions = filteredTransactions.filter(t => t.case_id && t.cases?.status === 'closed');
     }
 
     const transactionsToReport = filteredTransactions;
@@ -338,25 +346,28 @@ export async function GET(request: Request) {
         </div>
         
         <div class="summary-strip">
-          ${isSuperAdmin ? `
+          ${isSuperAdmin && !caseId ? `
           <div class="summary-item">
             <div class="summary-label">${firstCardLabel}</div>
             <div class="summary-value income">+${firstCardValue.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          ` : ''}
+          ${isSuperAdmin ? `
           <div class="summary-item">
             <div class="summary-label">${locale === 'ar' ? 'إجمالي الاتعاب' : 'Total Profit'}</div>
             <div class="summary-value profit">+${totalProfit.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
-          ` : `
+          ` : !caseId ? `
           <div class="summary-item">
             <div class="summary-label">${locale === 'ar' ? 'العهدة المالية' : 'Cash Advance'}</div>
             <div class="summary-value income">${firstCardValue.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
-          `}
+          ` : ''}
           <div class="summary-item">
             <div class="summary-label">${isSuperAdmin ? t('Dashboard.totalExpenses') : (t('Common.myExpenses') || 'My Expenses')}</div>
             <div class="summary-value expense">-${totalExpense.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          ${!caseId ? `
           <div class="summary-item">
             <div class="summary-label">${isSuperAdmin ? t('Dashboard.totalBalance') : (locale === 'ar' ? 'الرصيد الحالي' : 'Current Balance')}</div>
             <div class="summary-value ${(totalIncome - totalExpense) >= 0 ? 'balance-positive' : 'balance-negative'}">${(totalIncome - totalExpense).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
@@ -365,6 +376,7 @@ export async function GET(request: Request) {
             <div class="summary-label">${locale === 'ar' ? 'صافي الحساب' : 'Net Balance'}</div>
             <div class="summary-value ${(totalIncome - totalExpense - totalProfit) >= 0 ? 'balance-positive' : 'balance-negative'}">${(totalIncome - totalExpense - totalProfit).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</div>
           </div>
+          ` : ''}
         </div>
 
         <table>
@@ -372,9 +384,10 @@ export async function GET(request: Request) {
             <tr>
               <th style="width: 40px; text-align: center;">#</th>
               <th>${t('Transaction.columns.date')}</th>
-              <th>${t('Clients.columns.client')}</th>
+              ${!clientId ? `<th>${t('Clients.columns.client')}</th>` : ''}
               ${!caseId ? `<th>${t('Cases.title') || 'Case'}</th>` : ''}
               <th>${t('Transaction.columns.type')}</th>
+              <th>${t('Transaction.columns.voucher')}</th>
               <th>${t('Transaction.columns.description')}</th>
               <th class="amount-cell">${t('Transaction.columns.amount')}</th>
               <th>${t('Transaction.columns.createdBy')}</th>
@@ -385,17 +398,18 @@ export async function GET(request: Request) {
               <tr>
                 <td style="text-align: center; color: var(--ink-500); font-size: 12px;">${index + 1}</td>
                 <td>${new Date(t_row.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                <td>${escapeHtml(t_row.clients?.name || '')}</td>
+                ${!clientId ? `<td>${escapeHtml(t_row.clients?.name || '')}</td>` : ''}
                 ${!caseId ? `<td>${escapeHtml(t_row.cases?.title || '-')}</td>` : ''}
-                <td>${t_row.type === 'profit' ? (locale === 'ar' ? 'اتعاب' : 'Profit') : t_row.type === 'payment' ? t('Common.payment') : t_row.type === 'office' ? t('Common.office') : t('Common.expense')}</td>
+                <td>${t_row.type === 'profit' ? (locale === 'ar' ? 'اتعاب' : 'Profit') : t_row.type === 'system' ? t('Common.system') : t_row.type === 'payment' ? t('Common.payment') : t_row.type === 'office' ? t('Common.office') : t('Common.expense')}</td>
+                <td>${t_row.voucher_type ? t('Transaction.vouchers.' + t_row.voucher_type) : ''}</td>
                 <td>${escapeHtml(t_row.description)}</td>
-                <td class="amount-cell ${t_row.type === 'profit' ? 'profit' : (t_row.type === 'payment' ? 'payment' : 'expense')}">
-                  ${t_row.type === 'profit' || t_row.type === 'payment' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
+                <td class="amount-cell ${t_row.type === 'profit' ? 'profit' : (t_row.type === 'payment' || t_row.type === 'system' ? 'payment' : 'expense')}">
+                  ${t_row.type === 'profit' || t_row.type === 'payment' || t_row.type === 'system' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
                 </td>
                 <td>${escapeHtml(t_row.users?.full_name || (t_row.type === 'profit' ? (locale === 'ar' ? 'النظام' : 'System') : '-'))}</td>
               </tr>
             `).join('')}
-            ${transactionsToReport.length === 0 ? `<tr><td colspan="${!caseId ? 8 : 7}" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults')}</td></tr>` : ''}
+            ${transactionsToReport.length === 0 ? `<tr><td colspan="${!caseId ? 9 : 8}" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults')}</td></tr>` : ''}
           </tbody>
         </table>
 

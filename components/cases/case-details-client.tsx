@@ -57,13 +57,11 @@ export function CaseDetailsClient({
   caseData,
   initialTransactions,
   currentUser,
-  userGlobalBalance,
 }: {
   client: ClientWithSummary;
   caseData: CaseWithSummary;
   initialTransactions: TransactionWithUser[];
   currentUser: { id: string; role: string; cash_advance: number; full_name?: string } | null;
-  userGlobalBalance?: number;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -154,28 +152,21 @@ export function CaseDetailsClient({
   const totals = transactions.reduce(
     (acc, transaction) => {
       if (transaction.type === "payment") acc.payments += Number(transaction.amount);
-      if (transaction.type === "expense" || transaction.type === "office") acc.expenses += Number(transaction.amount);
+      if (transaction.type === "expense") acc.expenses += Number(transaction.amount);
       return acc;
     },
     { payments: 0, expenses: 0 },
   );
 
   const myExpenses = transactions
-    .filter((t) => (t.type === "expense" || t.type === "office") && t.created_by === userId)
+    .filter((t) => t.type === "expense" && t.created_by === userId)
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
-  let balance = 0;
-  let displayPayments = 0;
   let displayMyExpenses = 0;
   const displayTotalExpenses = totals.expenses;
 
-  if (userRole === "superadmin") {
-    displayPayments = totals.payments;
-    balance = displayPayments - displayTotalExpenses;
-  } else {
-    displayPayments = currentUser?.cash_advance || 0;
+  if (userRole !== "superadmin") {
     displayMyExpenses = myExpenses;
-    balance = userGlobalBalance !== undefined ? userGlobalBalance : displayPayments - myExpenses;
   }
 
   function openEditModal(transaction: TransactionWithUser) {
@@ -363,31 +354,18 @@ export function CaseDetailsClient({
       )}
 
       <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {userRole === "superadmin" && (
-          <FinanceMetric label={t("totalPayments") || "Total Payments"} value={formatCurrency(totals.payments, locale)} rawValue={totals.payments} tone="payment" locale={locale} />
-        )}
         <FinanceMetric label={t("totalExpenses")} value={formatCurrency(displayTotalExpenses, locale)} rawValue={displayTotalExpenses} tone="expense" locale={locale} />
         {userRole !== "superadmin" && (
           <FinanceMetric label={tCommon("myExpenses")} value={formatCurrency(displayMyExpenses, locale)} rawValue={displayMyExpenses} tone="expense" locale={locale} />
         )}
-        <FinanceMetric label={t("currentBalance")} value={formatCurrency(balance, locale)} rawValue={balance} tone="balance" locale={locale} />
         {userRole === "superadmin" && client.profit_type === "per_case" && caseData.profit_amount ? (
-          <>
-            <FinanceMetric
-              label={t("caseProfit") || "Case Profit"}
-              value={formatCurrency(caseData.profit_amount, locale)}
-              rawValue={caseData.profit_amount}
-              tone="payment"
-              locale={locale}
-            />
-            <FinanceMetric
-              label={locale === "ar" ? "صافي الحساب" : "Net Balance"}
-              value={formatCurrency(balance - caseData.profit_amount, locale)}
-              rawValue={balance - caseData.profit_amount}
-              tone="balance"
-              locale={locale}
-            />
-          </>
+          <FinanceMetric
+            label={t("caseProfit") || "Case Profit"}
+            value={formatCurrency(caseData.profit_amount, locale)}
+            rawValue={caseData.profit_amount}
+            tone="payment"
+            locale={locale}
+          />
         ) : null}
       </StaggerContainer>
 
@@ -661,6 +639,17 @@ function FinanceTab({
     return item.created_by === currentUserId;
   }
 
+  const getVoucherColor = (voucher?: string | null) => {
+    switch (voucher) {
+      case "cash": return "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400";
+      case "bank_transfer": return "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400";
+      case "receipt": return "bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400";
+      case "card": return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-500";
+      case "other": return "bg-stone-100 text-stone-700 dark:bg-stone-800/40 dark:text-stone-400";
+      default: return "bg-ink-100 text-ink-700 dark:bg-ink-800/40 dark:text-ink-400";
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="border-b border-ink-100 py-3 dark:border-ink-800 dark:bg-ink-950/20 sm:py-4">
@@ -680,18 +669,46 @@ function FinanceTab({
             {
               key: "type",
               header: tTrans("columns.type"),
+              cell: (item) => {
+                if (item.type === "profit") {
+                  return (
+                    <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-[10px] sm:text-xs font-semibold capitalize bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      {locale === "ar" ? "اتعاب" : "Profit"}
+                    </span>
+                  );
+                }
+                if (item.type === "office") {
+                  return (
+                    <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-[10px] sm:text-xs font-semibold capitalize bg-accent-50 text-accent-800 dark:bg-accent-950/50 dark:text-accent-300">
+                      {tCommon("office")}
+                    </span>
+                  );
+                }
+                return (
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-[10px] sm:text-xs font-semibold capitalize",
+                      item.type === "payment" || item.type === "system"
+                        ? "bg-success-50 text-success-800 dark:bg-success-950/50 dark:text-success-300"
+                        : "bg-error-50 text-error-800 dark:bg-error-950/50 dark:text-error-300",
+                    )}
+                  >
+                    {tCommon(item.type)}
+                  </span>
+                );
+              },
+            },
+            {
+              key: "voucher_type",
+              header: tTrans("columns.voucher"),
               cell: (item) => (
                 <span
                   className={cn(
-                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider sm:text-xs",
-                    item.type === "payment"
-                      ? "bg-success-50 text-success-700 dark:bg-success-950/40 dark:text-success-400"
-                      : item.type === "office"
-                        ? "bg-accent-50 text-accent-700 dark:bg-accent-950/40 dark:text-accent-400"
-                        : "bg-error-100 text-error-800 dark:bg-error-900/30 dark:text-error-400",
+                    "inline-flex items-center justify-center whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider sm:text-xs",
+                    getVoucherColor(item.voucher_type)
                   )}
                 >
-                  {tTrans("vouchers." + item.voucher_type)}
+                  {item.voucher_type ? tTrans("vouchers." + item.voucher_type) : "-"}
                 </span>
               ),
             },
@@ -707,10 +724,10 @@ function FinanceTab({
                 <span
                   className={cn(
                     "font-semibold tabular-nums",
-                    item.type === "payment" ? "text-success-700 dark:text-success-400" : "text-error-700 dark:text-error-400",
+                    item.type === "payment" || item.type === "system" ? "text-success-700 dark:text-success-400" : "text-error-700 dark:text-error-400",
                   )}
                 >
-                  {item.type === "payment" ? "+" : "-"}
+                  {item.type === "payment" || item.type === "system" ? "+" : "-"}
                   {formatCurrency(item.amount, locale)}
                 </span>
               ),

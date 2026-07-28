@@ -300,6 +300,7 @@ export async function GET(request: Request) {
               <th>${t('Transaction.columns.date') || 'Date'}</th>
               <th>${t('Clients.columns.client') || 'Client'}</th>
               ${isSuperAdmin ? `<th>${t('Transaction.columns.type') || 'Type'}</th>` : ''}
+              <th>${t('Transaction.columns.voucher')}</th>
               ${isSuperAdmin ? `<th>${t('Common.by') || 'By'}</th>` : ''}
               <th>${t('Transaction.columns.description') || 'Description'}</th>
               <th style="text-align: ${isRtl ? 'left' : 'right'}">${t('Transaction.columns.amount') || 'Amount'}</th>
@@ -312,6 +313,7 @@ export async function GET(request: Request) {
                 <td>${new Date(tx.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                 <td>${escapeHtml(tx.clients?.name || '-')}</td>
                 ${isSuperAdmin ? `<td>${tx.type === 'profit' ? (locale === 'ar' ? 'اتعاب' : 'Profit') : tx.type === 'payment' ? t('Common.payment') : tx.type === 'office' ? t('Common.office') : t('Common.expense')}</td>` : ''}
+                <td>${tx.voucher_type ? t('Transaction.vouchers.' + tx.voucher_type) : ''}</td>
                 ${isSuperAdmin ? `<td>${escapeHtml(tx.users?.full_name || (tx.type === 'profit' ? (locale === 'ar' ? 'النظام' : 'System') : '-'))}</td>` : ''}
                 <td>${escapeHtml(tx.description || '-')}</td>
                 <td class="numeric-cell ${tx.type === 'payment' || tx.type === 'profit' ? 'positive' : 'negative'}" style="text-align: ${isRtl ? 'left' : 'right'}">
@@ -319,13 +321,7 @@ export async function GET(request: Request) {
                 </td>
               </tr>
             `).join('')}
-            ${(allTransactions || []).length === 0 ? `
-              <tr>
-                <td colspan="${isSuperAdmin ? 7 : 5}" style="text-align: center; padding: 40px; color: var(--ink-500);">
-                  ${t('Transaction.noResults') || 'No transactions found'}
-                </td>
-              </tr>
-            ` : ''}
+            ${(allTransactions || []).length === 0 ? `<tr><td colspan="${isSuperAdmin ? 8 : 6}" style="text-align: center; padding: 40px; color: var(--ink-500);">${t('Transaction.noResults') || 'No transactions'}</td></tr>` : ''}
           </tbody>
         </table>
 

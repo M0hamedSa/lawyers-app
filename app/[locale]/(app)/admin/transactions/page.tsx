@@ -21,9 +21,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AdminTransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ query?: string; dateFrom?: string; dateTo?: string; type?: string; client_id?: string; case_id?: string }>;
+  searchParams: Promise<{ query?: string; dateFrom?: string; dateTo?: string; type?: string; client_id?: string; case_id?: string; case_status?: string }>;
 }) {
-  const { query, dateFrom, dateTo, type, client_id, case_id } = await searchParams;
+  const { query, dateFrom, dateTo, type, client_id, case_id, case_status } = await searchParams;
   const user = await getCurrentUser();
 
   if (user?.role !== "superadmin") {
@@ -35,16 +35,16 @@ export default async function AdminTransactionsPage({
   // Fetch clients and cases for filter dropdowns
   const [clientsResult, casesResult] = await Promise.all([
     supabase.from("clients").select("id, name").order("name", { ascending: true }),
-    supabase.from("cases").select("id, title, client_id").order("title", { ascending: true }),
+    supabase.from("cases").select("id, title, client_id, status").order("title", { ascending: true }),
   ]);
 
   const clientsList = clientsResult.data || [];
   const casesList = casesResult.data || [];
 
-  // Build transactions query
+  // Build transactions query for TABLE (includes type filter)
   let dbQuery = supabase
     .from("transactions")
-    .select("*, clients(name, profit), cases(title), users!transactions_created_by_fkey(full_name)")
+    .select("*, clients(name, profit), cases(title, status), users!transactions_created_by_fkey(full_name)")
     .order("date", { ascending: false });
 
   if (user.role !== "superadmin") {
@@ -53,25 +53,56 @@ export default async function AdminTransactionsPage({
 
   if (client_id) dbQuery = dbQuery.eq("client_id", client_id);
   if (case_id) dbQuery = dbQuery.eq("case_id", case_id);
+  if (case_status === "open") dbQuery = dbQuery.not("case_id", "is", null);
   if (dateFrom) dbQuery = dbQuery.gte("date", dateFrom);
   if (dateTo) dbQuery = dbQuery.lte("date", dateTo);
   if (type === "payment" || type === "expense" || type === "office") {
     dbQuery = dbQuery.eq("type", type);
   }
 
-  const { data: transactionsData, error: dbError } = await dbQuery;
+  // Build metrics query (same filters EXCEPT type — metrics always show all types)
+  let metricsQuery = supabase
+    .from("transactions")
+    .select("type, amount, description, clients(name), cases(title, status), users!transactions_created_by_fkey(full_name)")
+    .order("date", { ascending: false });
+
+  if (user.role !== "superadmin") {
+    metricsQuery = metricsQuery.eq("created_by", user.id);
+  }
+
+  if (client_id) metricsQuery = metricsQuery.eq("client_id", client_id);
+  if (case_id) metricsQuery = metricsQuery.eq("case_id", case_id);
+  if (case_status === "open") metricsQuery = metricsQuery.not("case_id", "is", null);
+  if (dateFrom) metricsQuery = metricsQuery.gte("date", dateFrom);
+  if (dateTo) metricsQuery = metricsQuery.lte("date", dateTo);
+
+  const [{ data: transactionsData, error: dbError }, { data: metricsData }] = await Promise.all([
+    dbQuery,
+    metricsQuery,
+  ]);
   if (dbError) throw new Error(dbError.message);
 
   let transactions = transactionsData || [];
+  let allTransactionsForMetrics = metricsData || [];
+
   if (query) {
     const q = query.toLowerCase();
-    transactions = transactions.filter(
-      (t) =>
-        (t.clients?.name || "").toLowerCase().includes(q) ||
-        (t.users?.full_name || "").toLowerCase().includes(q) ||
-        (t.description || "").toLowerCase().includes(q) ||
-        (t.cases?.title || "").toLowerCase().includes(q),
-    );
+    const textFilter = (t: { clients?: { name: string } | null; users?: { full_name?: string } | null; description?: string | null; cases?: { title: string; status?: string } | null }) =>
+      (t.clients?.name || "").toLowerCase().includes(q) ||
+      (t.users?.full_name || "").toLowerCase().includes(q) ||
+      (t.description || "").toLowerCase().includes(q) ||
+      (t.cases?.title || "").toLowerCase().includes(q);
+    transactions = transactions.filter(textFilter);
+    allTransactionsForMetrics = allTransactionsForMetrics.filter(textFilter);
+  }
+
+  // Apply case_status filter in JS (since it's a join filter)
+  if (case_status === "open") {
+    transactions = transactions.filter(t => !t.case_id || t.cases?.status !== "closed");
+    allTransactionsForMetrics = allTransactionsForMetrics.filter(t => !t.cases || t.cases.status !== "closed");
+  } else if (case_status === "closed") {
+    transactions = transactions.filter(t => t.case_id && t.cases?.status === "closed");
+    allTransactionsForMetrics = allTransactionsForMetrics.filter(t => t.cases?.status === "closed");
   }
 
   const locale = await getLocale();
@@ -106,10 +137,10 @@ export default async function AdminTransactionsPage({
     columns_client: tClients("columns.client"),
   };
 
-  const totalPayments = transactions.reduce((acc, t) => acc + (t.type === "payment" ? Number(t.amount) : 0), 0);
-  const totalExpenses = transactions.reduce((acc, t) => acc + ((t.type === "expense" || t.type === "office") ? Number(t.amount) : 0), 0);
+  const totalPayments = allTransactionsForMetrics.reduce((acc, t) => acc + (t.type === "payment" ? Number(t.amount) : 0), 0);
+  const totalExpenses = allTransactionsForMetrics.reduce((acc, t) => acc + ((t.type === "expense" || t.type === "office") ? Number(t.amount) : 0), 0);
 
-  let totalProfit = transactions.reduce((acc, t) => acc + (t.type === "profit" ? Number(t.amount) : 0), 0);
+  let totalProfit = allTransactionsForMetrics.reduce((acc, t) => acc + (t.type === "profit" ? Number(t.amount) : 0), 0);
 
   if (case_id) {
     const { data: caseData } = await supabase.from('cases').select('profit_amount, clients!inner(profit_type)').eq('id', case_id).single();
@@ -156,10 +187,10 @@ export default async function AdminTransactionsPage({
             {tAdminTable.transactionsLog}
           </h1>
         </div>
-        <ExportTransactionsButton clientId={client_id} caseId={case_id} />
+        <ExportTransactionsButton clientId={client_id} caseId={case_id} caseStatus={case_status} />
       </div>
 
-      <TransactionSearch clients={clientsList} cases={casesList} />
+      <TransactionSearch clients={clientsList} cases={casesList as { id: string; title: string; client_id: string }[]} />
 
       {transactions.length > 0 && (
         <div className="grid gap-4 md:grid-cols-5">

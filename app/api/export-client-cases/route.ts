@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser, getClient, getCases } from '@/lib/supabase/queries';
+import { createClient } from '@/lib/supabase/server';
 import fs from 'fs';
 import path from 'path';
 
@@ -42,7 +43,8 @@ export async function GET(request: Request) {
       s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;') : '';
 
     const client = await getClient(clientId);
-    const cases = await getCases(clientId);
+    const allCases = await getCases(clientId);
+    const cases = allCases.filter(c => c.status !== "closed");
 
     if (cases.length === 0) {
       return new NextResponse(JSON.stringify({ error: 'NO_DATA' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -59,22 +61,33 @@ export async function GET(request: Request) {
 
     const exportedAt = `${user.full_name} · ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
 
-    let balance = 0;
+    const supabase = await createClient();
+    const { data: transactionsData } = await supabase.from('transactions').select('*').eq('client_id', clientId);
+    const transactions = transactionsData || [];
+    
     let displayPayments = 0;
-    const displayExpenses = client.total_expenses;
+    let displayExpenses = 0;
 
-    // For per_case clients, total_profit is in cases.profit_amount; for monthly it's in profit transactions
+    transactions.forEach(t => {
+      if (!isSuperAdmin && t.created_by !== user.id) return;
+      if (t.case_id) {
+        const relatedCase = allCases.find(c => c.id === t.case_id);
+        if (relatedCase && relatedCase.status === "closed") return;
+      }
+      
+      if (t.type === "payment" && !t.is_cleared) displayPayments += Number(t.amount);
+      if (t.type === "expense") displayExpenses += Number(t.amount);
+    });
+
+    if (!isSuperAdmin) {
+      displayPayments = user.cash_advance || 0;
+    }
+    
+    const balance = displayPayments - displayExpenses;
+
     const totalProfit = client.profit_type === 'per_case'
       ? cases.reduce((sum, c) => sum + (Number(c.profit_amount) || 0), 0)
       : client.total_profit;
-
-    if (isSuperAdmin) {
-      displayPayments = client.total_payments;
-      balance = displayPayments - displayExpenses;
-    } else {
-      displayPayments = user.cash_advance || 0;
-      balance = displayPayments - displayExpenses;
-    }
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -290,9 +303,7 @@ export async function GET(request: Request) {
               <th>${t('Cases.columns.title') || 'Title'}</th>
               <th>${t('Cases.columns.status') || 'Status'}</th>
               ${isSuperAdmin && client.profit_type === 'per_case' ? `<th class="amount-cell">${t('Cases.columns.profit') || 'Profit'}</th>` : ''}
-              ${isSuperAdmin ? `<th class="amount-cell">${t('Cases.columns.payments') || 'Payments'}</th>` : ''}
               <th class="amount-cell">${t('Cases.columns.expenses') || 'Expenses'}</th>
-              ${isSuperAdmin ? `<th class="amount-cell">${t('Cases.columns.balance') || 'Balance'}</th>` : ''}
             </tr>
           </thead>
           <tbody>
@@ -302,9 +313,7 @@ export async function GET(request: Request) {
                 <td>${escapeHtml(c.title)}</td>
                 <td><span class="status-badge ${c.status === 'open' ? 'status-open' : 'status-closed'}">${t('Cases.status.' + c.status)}</span></td>
                 ${isSuperAdmin && client.profit_type === 'per_case' ? `<td class="amount-cell profit">${c.profit_amount ? '+' + c.profit_amount.toLocaleString(locale, { style: 'currency', currency: 'EGP' }) : '—'}</td>` : ''}
-                ${isSuperAdmin ? `<td class="amount-cell payment">${c.total_payments > 0 ? '+' : ''}${c.total_payments.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>` : ''}
                 <td class="amount-cell expense">${c.total_expenses > 0 ? '-' : ''}${c.total_expenses.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>
-                ${isSuperAdmin ? `<td class="amount-cell">${c.balance.toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>` : ''}
               </tr>
             `).join('')}
           </tbody>

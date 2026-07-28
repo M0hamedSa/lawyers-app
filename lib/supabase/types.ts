@@ -1,5 +1,5 @@
 export type UserRole = "superadmin" | "admin" | "user";
-export type TransactionType = "payment" | "expense" | "profit" | "office";
+export type TransactionType = "payment" | "expense" | "profit" | "office" | "system";
 export type VoucherType = "cash" | "bank_transfer" | "receipt" | "card" | "other";
 export type ProfitType = "monthly" | "per_case";
 
@@ -39,6 +39,7 @@ export type LedgerTransaction = {
   voucher_type: VoucherType;
   date: string;
   created_by: string | null;
+  is_cleared?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -244,6 +245,7 @@ export type Database = {
           voucher_type?: VoucherType;
           date?: string;
           created_by?: string | null;
+          is_cleared?: boolean;
         };
         Update: {
           case_id?: string | null;
@@ -253,6 +255,7 @@ export type Database = {
           is_profit_transaction?: boolean | null;
           voucher_type?: VoucherType;
           date?: string;
+          is_cleared?: boolean;
         };
         Relationships: [
           {

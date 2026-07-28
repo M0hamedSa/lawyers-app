@@ -10,7 +10,7 @@ import { ActionButton } from "@/components/ui/action-button";
 import { Modal } from "@/components/ui/modal";
 import { useRouter } from "@/i18n/routing";
 import { useLocale, useTranslations } from "next-intl";
-import { UserPlus, Users, Mail, Loader2 } from "lucide-react";
+import { UserPlus, Users, Loader2 } from "lucide-react";
 import { Field, inputClassName } from "@/components/ui/field";
 
 type UserWithAccess = {
@@ -47,16 +47,20 @@ export function UsersManagement({
   const [users, setUsers] = useState<UserWithAccess[]>(initialUsers);
   const [selectedUser, setSelectedUser] = useState<UserWithAccess | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: "", full_name: "", role: "user" });
+  const [createForm, setCreateForm] = useState<{ email: string; password: string; full_name: string; role: UserRole }>({ email: "", password: "", full_name: "", role: "user" });
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [cashAdvanceInput, setCashAdvanceInput] = useState<string>("");
+  const [newPasswordInput, setNewPasswordInput] = useState<string>("");
+  const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   function openManage(user: UserWithAccess) {
     setSelectedUser(user);
     setCashAdvanceInput(user.cash_advance?.toString() || "0");
+    setNewPasswordInput("");
+    setPasswordMsg(null);
     setModalOpen(true);
   }
 
@@ -101,35 +105,62 @@ export function UsersManagement({
     setTogglingId(null);
   }
 
-  async function handleInvite(e: React.FormEvent) {
+  async function updatePassword() {
+    if (!selectedUser || currentRole !== "superadmin" || !newPasswordInput) return;
+    if (newPasswordInput.length < 6) {
+      setPasswordMsg({ type: "error", text: locale === "ar" ? "كلمة المرور يجب أن تكون 6 أحرف على الأقل" : "Password must be at least 6 characters" });
+      return;
+    }
+
+    setSubmitting(true);
+    setTogglingId("change-password");
+    setPasswordMsg(null);
+
+    try {
+      const response = await fetch("/api/admin/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUser.id, newPassword: newPasswordInput }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update password");
+      }
+
+      setPasswordMsg({ type: "success", text: t("passwordUpdated") });
+      setNewPasswordInput("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update password";
+      setPasswordMsg({ type: "error", text: msg });
+    } finally {
+      setSubmitting(false);
+      setTogglingId(null);
+    }
+  }
+
+  async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setInviteError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const appBase =
-        (process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-          (typeof window !== "undefined" ? window.location.origin : "")) || "";
-      const redirectTo = appBase ? `${appBase}/${locale}/set-password` : undefined;
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/invite-user`, {
+      const response = await fetch("/api/admin/create-user", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ ...inviteForm, redirectTo }),
+        body: JSON.stringify(createForm),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to invite user");
+        throw new Error(result.error || "Failed to create user");
       }
 
-      setInviteModalOpen(false);
-      setInviteForm({ email: "", full_name: "", role: "user" });
+      setCreateModalOpen(false);
+      setCreateForm({ email: "", password: "", full_name: "", role: "user" });
       router.refresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "An error occurred";
@@ -189,9 +220,9 @@ export function UsersManagement({
     <div className="space-y-6">
       <div className="flex justify-stretch sm:justify-end">
         {currentRole === "superadmin" && (
-          <ActionButton className="w-full sm:w-auto" onClick={() => setInviteModalOpen(true)}>
+          <ActionButton className="w-full sm:w-auto" onClick={() => setCreateModalOpen(true)}>
             <UserPlus className="size-4 mr-2 rtl:mr-0 rtl:ml-2" />
-            {t("invite")}
+            {t("createUser")}
           </ActionButton>
         )}
       </div>
@@ -312,6 +343,31 @@ export function UsersManagement({
                   </ActionButton>
                 </div>
               </div>
+
+              <div className="space-y-2 border-b border-ink-100 pb-4">
+                <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">{t("changePassword")}</label>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    minLength={6}
+                    placeholder={t("newPassword")}
+                    className={inputClassName}
+                    value={newPasswordInput}
+                    onChange={(e) => setNewPasswordInput(e.target.value)}
+                  />
+                  <ActionButton 
+                    disabled={submitting || !newPasswordInput} 
+                    onClick={updatePassword}
+                  >
+                    {togglingId === 'change-password' ? <Loader2 className="size-4 animate-spin" /> : t("updatePassword")}
+                  </ActionButton>
+                </div>
+                {passwordMsg && (
+                  <p className={cn("text-xs font-medium mt-1", passwordMsg.type === "success" ? "text-success-600 dark:text-success-400" : "text-error-600 dark:text-error-400")}>
+                    {passwordMsg.text}
+                  </p>
+                )}
+              </div>
             </>
           )}
 
@@ -356,13 +412,13 @@ export function UsersManagement({
       </Modal>
 
       <Modal
-        title={t("invite")}
-        open={inviteModalOpen}
-        onClose={() => setInviteModalOpen(false)}
+        title={t("createUser")}
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
       >
-        <form onSubmit={handleInvite} className="space-y-4 [&_input]:w-full [&_select]:w-full">
+        <form onSubmit={handleCreateUser} className="space-y-4 [&_input]:w-full [&_select]:w-full">
           <p className="text-sm text-ink-600 dark:text-ink-300">
-            {t("inviteDesc")}
+            {t("createUserDesc")}
           </p>
 
           {inviteError && (
@@ -371,72 +427,84 @@ export function UsersManagement({
             </div>
           )}
 
-        <Field label={t("fullName")} className="dark:text-ink-50">
-          <input
-            required
-            className={inputClassName}
-            value={inviteForm.full_name}
-            onChange={(e) => setInviteForm({ ...inviteForm, full_name: e.target.value })}
-            placeholder="e.g. John Doe"
-          />
-        </Field>
+          <Field label={t("fullName")} className="dark:text-ink-50">
+            <input
+              required
+              className={inputClassName}
+              value={createForm.full_name}
+              onChange={(e) => setCreateForm({ ...createForm, full_name: e.target.value })}
+              placeholder="e.g. John Doe"
+            />
+          </Field>
 
-        <Field label={tLogin("email")} className="dark:text-ink-50">
-          <input
-            required
-            type="email"
-            className={inputClassName}
-            value={inviteForm.email}
-            onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-            placeholder="john@example.com"
-          />
-        </Field>
+          <Field label={tLogin("email")} className="dark:text-ink-50">
+            <input
+              required
+              type="email"
+              className={inputClassName}
+              value={createForm.email}
+              onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+              placeholder="john@example.com"
+            />
+          </Field>
 
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">{t("initialRole")}</label>
-          <div className="flex gap-2">
-            {(["user", "admin", "superadmin"] as UserRole[]).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setInviteForm({ ...inviteForm, role: r })}
-                className={cn(
-                  "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition",
-                  inviteForm.role === r
-                    ? "border-ink-900 bg-ink-800 text-white"
-                    : "border-ink-200 text-ink-600 hover:bg-ink-50"
-                )}
-              >
-                {tRoles(r)}
-              </button>
-            ))}
+          <Field label={t("password")} className="dark:text-ink-50">
+            <input
+              required
+              type="password"
+              minLength={6}
+              className={inputClassName}
+              value={createForm.password}
+              onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+              placeholder="••••••••"
+            />
+          </Field>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">{t("initialRole")}</label>
+            <div className="flex gap-2">
+              {(["user", "admin", "superadmin"] as UserRole[]).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setCreateForm({ ...createForm, role: r })}
+                  className={cn(
+                    "flex-1 rounded-md border px-3 py-2 text-sm font-medium transition",
+                    createForm.role === r
+                      ? "border-ink-900 bg-ink-800 text-white"
+                      : "border-ink-200 text-ink-600 hover:bg-ink-50"
+                  )}
+                >
+                  {tRoles(r)}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="flex justify-end gap-3 pt-4">
-          <ActionButton
-            variant="secondary"
-            type="button"
-            onClick={() => setInviteModalOpen(false)}
-          >
-            {t("cancel")}
-          </ActionButton>
-          <ActionButton type="submit" disabled={submitting}>
-            {submitting ? (
-              <>
-                <Loader2 className="size-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
-                {t("sending")}
-              </>
-            ) : (
-              <>
-                <Mail className="size-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                {t("sendInvite")}
-              </>
-            )}
-          </ActionButton>
-        </div>
-      </form>
-    </Modal>
+          <div className="flex justify-end gap-3 pt-4">
+            <ActionButton
+              variant="secondary"
+              type="button"
+              onClick={() => setCreateModalOpen(false)}
+            >
+              {t("cancel")}
+            </ActionButton>
+            <ActionButton type="submit" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="size-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
+                  {t("creating")}
+                </>
+              ) : (
+                <>
+                  <UserPlus className="size-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                  {t("createUser")}
+                </>
+              )}
+            </ActionButton>
+          </div>
+        </form>
+      </Modal>
     </div >
   );
 }

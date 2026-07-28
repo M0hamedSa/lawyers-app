@@ -13,7 +13,7 @@ import { Trash2, Loader2 } from "lucide-react";
 type Transaction = {
   id: string;
   date: string;
-  type: "payment" | "expense" | "profit" | "office";
+  type: "payment" | "expense" | "profit" | "office" | "system";
   amount: number;
   description: string;
   client_id: string;
@@ -21,6 +21,7 @@ type Transaction = {
   clients?: { name: string } | null;
   cases?: { title: string } | null;
   users?: { full_name?: string } | null;
+  voucher_type?: string;
 };
 
 export function TransactionsTable({
@@ -40,6 +41,16 @@ export function TransactionsTable({
   tCases: Record<string, string>;
   tClients: Record<string, string>;
 }) {
+  const getVoucherColor = (voucher?: string | null) => {
+    switch (voucher) {
+      case "cash": return "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400";
+      case "bank_transfer": return "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400";
+      case "receipt": return "bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400";
+      case "card": return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-500";
+      case "other": return "bg-stone-100 text-stone-700 dark:bg-stone-800/40 dark:text-stone-400";
+      default: return "bg-ink-100 text-ink-700 dark:bg-ink-800/40 dark:text-ink-400";
+    }
+  };
   const [data, setData] = useState(initialTransactions);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -121,14 +132,14 @@ export function TransactionsTable({
               cell: (t: Transaction) => {
                 if (t.type === "profit") {
                   return (
-                    <span className="inline-flex rounded-md px-2 py-1 text-xs font-semibold capitalize bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold capitalize bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                       {tAdmin.title === "المسؤول" ? "اتعاب" : "Profit"}
                     </span>
                   );
                 }
                 if (t.type === "office") {
                   return (
-                    <span className="inline-flex rounded-md px-2 py-1 text-xs font-semibold capitalize bg-accent-50 text-accent-800 dark:bg-accent-950/50 dark:text-accent-300">
+                    <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold capitalize bg-accent-50 text-accent-800 dark:bg-accent-950/50 dark:text-accent-300">
                       {tCommon.office}
                     </span>
                   );
@@ -136,13 +147,39 @@ export function TransactionsTable({
                 return (
                   <span
                     className={cn(
-                      "inline-flex rounded-md px-2 py-1 text-xs font-semibold capitalize",
-                      t.type === "payment"
+                      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold capitalize",
+                      t.type === "payment" || t.type === "system"
                         ? "bg-success-50 text-success-800 dark:bg-success-950/50 dark:text-success-300"
                         : "bg-error-50 text-error-800 dark:bg-error-950/50 dark:text-error-300",
                     )}
                   >
                     {tCommon[t.type]}
+                  </span>
+                );
+              },
+            },
+            {
+              key: "voucher_type",
+              header: tAdmin.title === "المسؤول" ? "نوع السند" : "Voucher",
+              cell: (t: Transaction) => {
+                if (!t.voucher_type) return null;
+                const isAr = tAdmin.title === "المسؤول";
+                const labels: Record<string, string[]> = {
+                  cash: ["Cash", "نقدي"],
+                  bank_transfer: ["Bank Transfer", "تحويل بنكي"],
+                  receipt: ["Receipt", "إيصال"],
+                  card: ["Visa", "فيزا"],
+                  other: ["Other", "أخرى"],
+                };
+                const label = labels[t.voucher_type] ? labels[t.voucher_type][isAr ? 1 : 0] : t.voucher_type;
+                return (
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider sm:text-xs",
+                      getVoucherColor(t.voucher_type)
+                    )}
+                  >
+                    {label}
                   </span>
                 );
               },

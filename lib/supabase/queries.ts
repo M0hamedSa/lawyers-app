@@ -13,7 +13,7 @@ type ClientRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  transactions: { amount: number; type: "payment" | "expense" | "profit" | "office"; created_by?: string }[];
+  transactions: { amount: number; type: "payment" | "expense" | "profit" | "office" | "system"; created_by?: string; is_cleared?: boolean }[];
   creator?: { full_name: string } | null;
 };
 
@@ -27,7 +27,7 @@ export type CaseRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  transactions: { amount: number; type: "payment" | "expense" | "office"; created_by?: string }[];
+  transactions: { amount: number; type: "payment" | "expense" | "office"; created_by?: string; is_cleared?: boolean }[];
 };
 
 type SummaryUser = { id: string; role: string };
@@ -39,11 +39,11 @@ function withSummary(client: ClientRow, currentUser: SummaryUser | null = null):
       if (currentUser && currentUser.role !== "superadmin" && transaction.created_by !== currentUser.id) {
         return acc;
       }
-      if (transaction.type === "profit") {
+      if (transaction.type === "profit" || transaction.type === "system") {
         acc.total_profit += Number(transaction.amount);
       } else {
-        if (transaction.type === "payment") acc.total_payments += Number(transaction.amount);
-        if (transaction.type === "expense" || transaction.type === "office") acc.total_expenses += Number(transaction.amount);
+        if (transaction.type === "payment" && !transaction.is_cleared) acc.total_payments += Number(transaction.amount);
+        if (transaction.type === "expense") acc.total_expenses += Number(transaction.amount);
       }
       return acc;
     },
@@ -76,8 +76,8 @@ export function caseWithSummary(c: CaseRow, currentUser: SummaryUser | null = nu
       if (currentUser && currentUser.role !== "superadmin" && transaction.created_by !== currentUser.id) {
         return acc;
       }
-      if (transaction.type === "payment") acc.total_payments += Number(transaction.amount);
-      if (transaction.type === "expense" || transaction.type === "office") acc.total_expenses += Number(transaction.amount);
+      if (transaction.type === "payment" && !transaction.is_cleared) acc.total_payments += Number(transaction.amount);
+      if (transaction.type === "expense") acc.total_expenses += Number(transaction.amount);
       return acc;
     },
     { total_payments: 0, total_expenses: 0 },
@@ -104,7 +104,7 @@ export async function getClients() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
-    .select("*, creator:users!clients_created_by_fkey(full_name), transactions(amount, type, created_by)")
+    .select("*, creator:users!clients_created_by_fkey(full_name), transactions(amount, type, created_by, is_cleared)")
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -116,7 +116,7 @@ export async function getClient(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
-    .select("*, creator:users!clients_created_by_fkey(full_name), transactions(amount, type, created_by)")
+    .select("*, creator:users!clients_created_by_fkey(full_name), transactions(amount, type, created_by, is_cleared)")
     .eq("id", id)
     .single();
 
@@ -142,7 +142,7 @@ export async function getCases(clientId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("cases")
-    .select("*, transactions(amount, type, created_by)")
+    .select("*, transactions(amount, type, created_by, is_cleared)")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
 

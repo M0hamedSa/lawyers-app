@@ -252,6 +252,7 @@ export async function GET(request: Request) {
               <th>${t('Transaction.columns.createdBy')}</th>
               <th>${t('Clients.columns.client')}</th>
               <th>${t('Cases.title') || 'Case'}</th>
+              <th>${t('Transaction.columns.voucher')}</th>
               <th>${t('Transaction.columns.description')}</th>
               <th class="amount-cell">${t('Transaction.columns.amount')}</th>
             </tr>
@@ -264,6 +265,7 @@ export async function GET(request: Request) {
                 <td>${escapeHtml(t_row.users?.full_name || '-')}</td>
                 <td>${escapeHtml(t_row.clients?.name || '-')}</td>
                 <td>${escapeHtml(t_row.cases?.title || '-')}</td>
+                <td>${t_row.voucher_type ? t('Transaction.vouchers.' + t_row.voucher_type) : ''}</td>
                 <td>${escapeHtml(t_row.description)}</td>
                 <td class="amount-cell office">-${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}</td>
               </tr>

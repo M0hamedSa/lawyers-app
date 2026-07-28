@@ -14,6 +14,7 @@
     "payment": "Payment",
     "expense": "Expense",
     "office": "Office",
+    "system": "Monthly Fee",
     "myFinancials": "My Financials",
     "cashAdvance": "Cash Advance",
     "myExpenses": "My Expenses",
@@ -100,6 +101,9 @@
     "editClient": "Edit client",
     "deleteClient": "Delete client",
     "deleteConfirm": "Are you sure you want to delete this client? This action cannot be undone and will delete all associated transactions.",
+    "resetPayments": "Reset Payments",
+    "resetPaymentsConfirm": "Are you sure you want to mark all current payments as done and reset the counter to zero?",
+    "cleared": "Cleared",
     "empty": "No clients yet.",
     "columns": {
       "client": "Client",
@@ -207,7 +211,7 @@
       "bank_transfer": "Bank transfer",
       "check": "Receipt",
       "receipt": "Receipt",
-      "card": "Card",
+      "card": "Visa",
       "other": "Other"
     },
     "search": "Search transactions...",
@@ -219,7 +223,10 @@
     "allCases": "All cases",
     "clearFilters": "Clear filters",
     "noResults": "No transactions match your search.",
-    "allTypes": "All Types"
+    "allTypes": "All Types",
+    "allCaseStatuses": "All Cases",
+    "openCases": "Open Cases",
+    "closedCases": "Closed Cases"
   },
   "Admin": {
     "title": "Admin",
@@ -265,6 +272,10 @@
   },
   "UserManagement": {
     "invite": "Invite New User",
+    "createUser": "Create New User",
+    "createUserDesc": "Fill in the details below to create a new user account.",
+    "creating": "Creating...",
+    "password": "Password",
     "fullName": "Full Name",
     "role": "Role",
     "assignedClients": "Assigned Clients",
@@ -280,6 +291,10 @@
     "clientAccessDesc": "Select which clients this user is allowed to access and manage.",
     "inviteDesc": "Send an invitation email to a new team member. They will receive a link to set their password.",
     "userRole": "User Role",
+    "changePassword": "Change Password",
+    "newPassword": "New Password",
+    "updatePassword": "Update Password",
+    "passwordUpdated": "Password updated successfully!",
     "noUsers": "No users found.",
     "lockoutWarning": "Superadmins cannot change their own role to prevent accidental lockout."
   },

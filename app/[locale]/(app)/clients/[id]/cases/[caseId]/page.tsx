@@ -37,19 +37,11 @@ export default async function CaseDetailsPage({ params }: { params: Promise<{ id
       notFound();
     }
 
-    let userGlobalBalance: number | undefined = undefined;
-    if (currentUser?.role !== "superadmin") {
-      const { getUserFinancials } = await import("@/lib/supabase/queries");
-      const financials = await getUserFinancials();
-      userGlobalBalance = financials?.balance;
-    }
-
     return <CaseDetailsClient 
       client={client} 
       caseData={caseData}
       initialTransactions={transactions} 
       currentUser={currentUser}
-      userGlobalBalance={userGlobalBalance}
     />;
   } catch {
     notFound();

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import type { Route } from "next";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Edit2, Trash2, Download, Eye, FileText, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit2, Trash2, Download, Eye, FileText, Plus, Loader2, RotateCcw } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -88,6 +88,7 @@ export function ClientDetailsClient({
   const tCases = useTranslations("Cases");
   const tCommon = useTranslations("Common");
   const tTrans = useTranslations("Transaction");
+  const tClients = useTranslations("Clients");
   const locale = useLocale();
 
   const userRole = currentUser?.role || null;
@@ -97,6 +98,7 @@ export function ClientDetailsClient({
   const [transactions, setTransactions] = useState(initialTransactions);
   const [modalOpen, setModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [resetModalOpen, setResetModalOpen] = useState(false);
   const [form, setForm] = useState<CaseForm>(emptyCase);
   const [paymentForm, setPaymentForm] = useState<PaymentForm>(emptyPayment);
   const [submitting, setSubmitting] = useState(false);
@@ -191,7 +193,9 @@ export function ClientDetailsClient({
 
   const caseTotals = cases.reduce(
     (acc, c) => {
-      acc.profit += c.profit_amount ?? 0;
+      if (c.status !== "closed") {
+        acc.profit += c.profit_amount ?? 0;
+      }
       return acc;
     },
     { profit: 0 }
@@ -202,8 +206,16 @@ export function ClientDetailsClient({
       if (userRole !== "superadmin" && t.created_by !== currentUser?.id) {
         return acc;
       }
-      if (t.type === "payment") acc.payments += Number(t.amount);
-      if (t.type === "expense" || t.type === "office") acc.expenses += Number(t.amount);
+      // Exclude transactions belonging to closed cases
+      if (t.case_id) {
+        const relatedCase = cases.find((c) => c.id === t.case_id);
+        if (relatedCase && relatedCase.status === "closed") {
+          return acc;
+        }
+      }
+      
+      if (t.type === "payment" && !t.is_cleared) acc.payments += Number(t.amount);
+      if (t.type === "expense") acc.expenses += Number(t.amount);
       return acc;
     },
     { payments: 0, expenses: 0 }
@@ -225,6 +237,24 @@ export function ClientDetailsClient({
   } else {
     displayPayments = currentUser?.cash_advance || 0;
     balance = userGlobalBalance !== undefined ? userGlobalBalance : displayPayments - displayExpenses;
+  }
+
+  async function handleResetPayments() {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/clients/${client.id}/reset-payments`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to reset payments");
+      
+      setTransactions((current) => 
+        current.map(t => t.type === "payment" && !t.is_cleared ? { ...t, is_cleared: true } : t)
+      );
+      setResetModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Error resetting payments");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function saveCase(event: React.FormEvent<HTMLFormElement>) {
@@ -352,7 +382,7 @@ export function ClientDetailsClient({
       .insert({
         client_id: client.id,
         case_id: null,
-        type: "payment",
+        type: client.profit_type === "monthly" ? "system" : "payment",
         amount,
         description: paymentForm.description.trim(),
         voucher_type: paymentForm.voucher_type,
@@ -396,6 +426,30 @@ export function ClientDetailsClient({
           </div>
           <div className="flex w-full shrink-0 flex-col-reverse gap-2 sm:w-auto sm:flex-row-reverse">
             <ExportCasesButton clientId={client.id} />
+            
+            {userRole === "superadmin" && client.status === "active" && (
+              <ActionButton
+                variant="secondary"
+                className="w-full shrink-0 sm:w-auto text-error-600 hover:text-error-700 hover:border-error-300 dark:text-error-400 dark:hover:text-error-300"
+                onClick={() => setResetModalOpen(true)}
+              >
+                <RotateCcw className="size-4" aria-hidden />
+                {tClients("resetPayments") || "Reset Payments"}
+              </ActionButton>
+            )}
+
+            <ActionButton
+              className="w-full shrink-0 sm:w-auto"
+              onClick={() => {
+                setActiveTab("cases");
+                setForm(emptyCase);
+                setModalOpen(true);
+              }}
+            >
+              <Plus className="size-4" aria-hidden />
+              {tCases("newCase")}
+            </ActionButton>
+            
             {userRole === "superadmin" && client.status === "active" && (
               <ActionButton
                 className="w-full shrink-0 sm:w-auto"
@@ -408,17 +462,6 @@ export function ClientDetailsClient({
                 {tCommon("payment")}
               </ActionButton>
             )}
-            <ActionButton
-              className="w-full shrink-0 sm:w-auto"
-              onClick={() => {
-                setActiveTab("cases");
-                setForm(emptyCase);
-                setModalOpen(true);
-              }}
-            >
-              <Plus className="size-4" aria-hidden />
-              {tCases("newCase")}
-            </ActionButton>
           </div>
         </div>
       </FadeInBox>
@@ -597,6 +640,29 @@ export function ClientDetailsClient({
             </ActionButton>
           </div>
         </form>
+      </Modal>
+
+      <Modal open={resetModalOpen} onClose={() => setResetModalOpen(false)} title={tClients("resetPayments") || "Reset Payments"}>
+        <div className="p-4 sm:p-6">
+          <p className="mb-6 text-body-md text-ink-700 dark:text-ink-300">
+            {tClients("resetPaymentsConfirm") || "Are you sure you want to mark all current payments as done and reset the counter to zero?"}
+          </p>
+          <div className="flex justify-end gap-3">
+            <ActionButton type="button" variant="secondary" onClick={() => setResetModalOpen(false)}>
+              {tCommon("cancel")}
+            </ActionButton>
+            <ActionButton type="button" variant="danger" disabled={submitting} onClick={handleResetPayments}>
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  {tCommon("saving")}
+                </>
+              ) : (
+                tClients("resetPayments") || "Reset Payments"
+              )}
+            </ActionButton>
+          </div>
+        </div>
       </Modal>
 
       <Modal title={form.id ? tCases("editCase") : tCases("newCase")} open={modalOpen} onClose={() => setModalOpen(false)}>
@@ -1106,12 +1172,24 @@ function FinanceTab({
   const tCases = useTranslations("Cases");
   const tTrans = useTranslations("Transaction");
   const tCommon = useTranslations("Common");
+  const tClients = useTranslations("Clients");
   const locale = useLocale();
 
   function canModify(item: TransactionWithUserAndCase) {
     if (userRole === "superadmin") return true;
     return item.created_by === currentUserId;
   }
+
+  const getVoucherColor = (voucher?: string | null) => {
+    switch (voucher) {
+      case "cash": return "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400";
+      case "bank_transfer": return "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400";
+      case "receipt": return "bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400";
+      case "card": return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-500";
+      case "other": return "bg-stone-100 text-stone-700 dark:bg-stone-800/40 dark:text-stone-400";
+      default: return "bg-ink-100 text-ink-700 dark:bg-ink-800/40 dark:text-ink-400";
+    }
+  };
 
   return (
     <Card>
@@ -1137,18 +1215,46 @@ function FinanceTab({
             {
               key: "type",
               header: tTrans("columns.type"),
+              cell: (item) => {
+                if (item.type === "profit") {
+                  return (
+                    <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-[10px] sm:text-xs font-semibold capitalize bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      {locale === "ar" ? "اتعاب" : "Profit"}
+                    </span>
+                  );
+                }
+                if (item.type === "office") {
+                  return (
+                    <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-[10px] sm:text-xs font-semibold capitalize bg-accent-50 text-accent-800 dark:bg-accent-950/50 dark:text-accent-300">
+                      {tCommon("office")}
+                    </span>
+                  );
+                }
+                return (
+                  <span
+                    className={cn(
+                      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-[10px] sm:text-xs font-semibold capitalize",
+                      item.type === "payment" || item.type === "system"
+                        ? "bg-success-50 text-success-800 dark:bg-success-950/50 dark:text-success-300"
+                        : "bg-error-50 text-error-800 dark:bg-error-950/50 dark:text-error-300",
+                    )}
+                  >
+                    {tCommon(item.type)}
+                  </span>
+                );
+              },
+            },
+            {
+              key: "voucher_type",
+              header: tTrans("columns.voucher"),
               cell: (item) => (
                 <span
                   className={cn(
-                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider sm:text-xs",
-                    item.type === "payment"
-                      ? "bg-success-50 text-success-700 dark:bg-success-950/40 dark:text-success-400"
-                      : item.type === "office"
-                        ? "bg-accent-50 text-accent-700 dark:bg-accent-950/40 dark:text-accent-400"
-                        : "bg-error-100 text-error-800 dark:bg-error-900/30 dark:text-error-400",
+                    "inline-flex items-center justify-center whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider sm:text-xs",
+                    getVoucherColor(item.voucher_type)
                   )}
                 >
-                  {tTrans("vouchers." + item.voucher_type)}
+                  {item.voucher_type ? tTrans("vouchers." + item.voucher_type) : "-"}
                 </span>
               ),
             },
@@ -1161,15 +1267,22 @@ function FinanceTab({
               key: "amount",
               header: tTrans("columns.amount"),
               cell: (item) => (
-                <span
-                  className={cn(
-                    "font-semibold tabular-nums",
-                    item.type === "payment" ? "text-success-700 dark:text-success-400" : "text-error-700 dark:text-error-400",
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      item.type === "payment" || item.type === "system" ? "text-success-700 dark:text-success-400" : "text-error-700 dark:text-error-400",
+                    )}
+                  >
+                    {item.type === "payment" || item.type === "system" ? "+" : "-"}
+                    {formatCurrency(item.amount, locale)}
+                  </span>
+                  {item.is_cleared && (
+                    <span className="inline-flex rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-medium text-ink-600 dark:bg-ink-800 dark:text-ink-300">
+                      {tClients("cleared") || "Cleared"}
+                    </span>
                   )}
-                >
-                  {item.type === "payment" ? "+" : "-"}
-                  {formatCurrency(item.amount, locale)}
-                </span>
+                </div>
               ),
             },
             {

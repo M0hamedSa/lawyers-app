@@ -30,6 +30,7 @@ export function TransactionSearch({
   const [type, setType] = useState(searchParams.get("type") || "");
   const [clientId, setClientId] = useState(searchParams.get("client_id") || "");
   const [caseId, setCaseId] = useState(searchParams.get("case_id") || "");
+  const [caseStatus, setCaseStatus] = useState(searchParams.get("case_status") || "");
   const [debouncedQuery] = useDebounce(query, 500);
 
   function handleClientChange(val: string) {
@@ -38,7 +39,7 @@ export function TransactionSearch({
   }
 
   const availableCases = clientId ? cases.filter((c) => c.client_id === clientId) : [];
-  const hasFilters = !!(query || dateFrom || dateTo || type || clientId || caseId);
+  const hasFilters = !!(query || dateFrom || dateTo || type || clientId || caseId || caseStatus);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -48,12 +49,13 @@ export function TransactionSearch({
     if (type) params.set("type", type);
     if (clientId) params.set("client_id", clientId);
     if (caseId) params.set("case_id", caseId);
+    if (caseStatus) params.set("case_status", caseStatus);
 
     const newSearch = params.toString();
     if (newSearch !== searchParams.toString()) {
       router.push(`${pathname}?${newSearch}` as Route);
     }
-  }, [debouncedQuery, dateFrom, dateTo, type, clientId, caseId, pathname, router, searchParams]);
+  }, [debouncedQuery, dateFrom, dateTo, type, clientId, caseId, caseStatus, pathname, router, searchParams]);
 
   const clearFilters = () => {
     setQuery("");
@@ -62,6 +64,7 @@ export function TransactionSearch({
     setType("");
     setClientId("");
     setCaseId("");
+    setCaseStatus("");
     router.push(pathname as Route);
   };
 
@@ -152,6 +155,17 @@ export function TransactionSearch({
           ))}
         </select>
       )}
+
+      {/* Case Status */}
+      <select
+        className={`${inputClassName} w-full shrink-0 appearance-none text-sm sm:w-36`}
+        value={caseStatus}
+        onChange={(e) => setCaseStatus(e.target.value)}
+      >
+        <option value="">{t("allCaseStatuses") || "All Cases"}</option>
+        <option value="open">{t("openCases") || "Open"}</option>
+        <option value="closed">{t("closedCases") || "Closed"}</option>
+      </select>
 
       {/* Clear — icon only */}
       {hasFilters && (
