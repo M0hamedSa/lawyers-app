@@ -51,48 +51,75 @@ export async function GET(request: Request) {
       .select("*, clients(name, profit, profit_type), cases(title, status), users!transactions_created_by_fkey(full_name)")
       .order("date", { ascending: false });
 
+    let metricsQuery = supabase
+      .from("transactions")
+      .select("*, clients(name, profit, profit_type), cases(title, status), users!transactions_created_by_fkey(full_name)")
+      .order("date", { ascending: false });
+
     if (user.role !== "superadmin") {
       dbQuery = dbQuery.eq('created_by', user.id);
+      metricsQuery = metricsQuery.eq('created_by', user.id);
     }
 
     if (clientId) {
       dbQuery = dbQuery.eq('client_id', clientId);
+      metricsQuery = metricsQuery.eq('client_id', clientId);
       if (user.role !== 'superadmin') {
         dbQuery = dbQuery.neq('type', 'payment');
+        metricsQuery = metricsQuery.neq('type', 'payment');
       }
     }
     if (caseId) {
       dbQuery = dbQuery.eq('case_id', caseId);
+      metricsQuery = metricsQuery.eq('case_id', caseId);
     }
-    if (dateFrom) dbQuery = dbQuery.gte('date', dateFrom);
-    if (dateTo) dbQuery = dbQuery.lte('date', dateTo);
-    if (type === 'payment' || type === 'expense') {
+    if (dateFrom) {
+      dbQuery = dbQuery.gte('date', dateFrom);
+      metricsQuery = metricsQuery.gte('date', dateFrom);
+    }
+    if (dateTo) {
+      dbQuery = dbQuery.lte('date', dateTo);
+      metricsQuery = metricsQuery.lte('date', dateTo);
+    }
+    if (type === 'payment' || type === 'expense' || type === 'office') {
       dbQuery = dbQuery.eq('type', type);
     }
 
-    const { data: transactions, error: dbError } = await dbQuery;
+    const [{ data: transactions, error: dbError }, { data: metricsTransactions, error: metricsError }] = await Promise.all([
+      dbQuery,
+      metricsQuery,
+    ]);
 
     if (dbError) throw new Error(dbError.message);
+    if (metricsError) throw new Error(metricsError.message);
 
-    // Apply text search filter if present (Supabase text search is more complex, so we'll keep this part in JS for simplicity or use .ilike)
+    // Apply text search filter if present
     let filteredTransactions = transactions || [];
+    let filteredMetricsTransactions = metricsTransactions || [];
+
     if (query) {
       const q = query.toLowerCase();
-      filteredTransactions = filteredTransactions.filter(t =>
-        t.clients.name.toLowerCase().includes(q) ||
+      const textFilter = (t: typeof filteredTransactions[number]) =>
+        (t.clients?.name || "").toLowerCase().includes(q) ||
         (t.users?.full_name || "").toLowerCase().includes(q) ||
-        (t.description || "").toLowerCase().includes(q)
-      );
+        (t.description || "").toLowerCase().includes(q) ||
+        (t.cases?.title || "").toLowerCase().includes(q);
+
+      filteredTransactions = filteredTransactions.filter(textFilter);
+      filteredMetricsTransactions = filteredMetricsTransactions.filter(textFilter);
     }
 
     // Apply case_status filter if provided
     if (caseStatus === 'open') {
       filteredTransactions = filteredTransactions.filter(t => !t.case_id || t.cases?.status !== 'closed');
+      filteredMetricsTransactions = filteredMetricsTransactions.filter(t => !t.case_id || t.cases?.status !== 'closed');
     } else if (caseStatus === 'closed') {
       filteredTransactions = filteredTransactions.filter(t => t.case_id && t.cases?.status === 'closed');
+      filteredMetricsTransactions = filteredMetricsTransactions.filter(t => t.case_id && t.cases?.status === 'closed');
     }
 
     const transactionsToReport = filteredTransactions;
+    const allTransactionsForMetrics = filteredMetricsTransactions;
 
     if (transactionsToReport.length === 0) {
       return new NextResponse(JSON.stringify({ error: 'NO_DATA' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -102,12 +129,12 @@ export async function GET(request: Request) {
     let totalExpense = 0;
     let totalProfit = 0;
 
-    transactionsToReport.forEach(t => {
+    allTransactionsForMetrics.forEach(t => {
       if (t.type === 'profit') {
         totalProfit += Number(t.amount);
       } else if (t.type === 'payment') {
         totalIncome += Number(t.amount);
-      } else if (t.type === 'expense') {
+      } else if (t.type === 'expense' || t.type === 'office') {
         totalExpense += Number(t.amount);
       }
     });
@@ -146,8 +173,8 @@ export async function GET(request: Request) {
         }
       }
     } else {
-      clientName = transactionsToReport[0].clients?.name || '';
-      caseTitle = transactionsToReport[0].cases?.title || '';
+      clientName = transactionsToReport[0]?.clients?.name || allTransactionsForMetrics[0]?.clients?.name || '';
+      caseTitle = transactionsToReport[0]?.cases?.title || allTransactionsForMetrics[0]?.cases?.title || '';
       // Grand total for all per_case clients in the system
       const { data: allCasesData } = await supabase.from('cases').select('profit_amount, clients!inner(profit_type)');
       if (allCasesData) {
