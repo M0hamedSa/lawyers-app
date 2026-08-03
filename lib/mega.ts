@@ -71,9 +71,21 @@ export async function listFilesFromMega(folderPath: string): Promise<
     }));
 }
 
-export async function deleteFile(nodeId: string): Promise<void> {
+async function getNode(nodeId: string) {
   const storage = await getStorage();
-  const node = storage.files[nodeId];
+
+  if (storage.files[nodeId]) {
+    return storage.files[nodeId];
+  }
+
+  // The in-memory tree can go stale when folders are moved in the Mega
+  // web UI, so force a reload before giving up.
+  await storage.reload(true);
+  return storage.files[nodeId];
+}
+
+export async function deleteFile(nodeId: string): Promise<void> {
+  const node = await getNode(nodeId);
   if (!node) throw new Error("File not found on Mega");
   await node.delete(true);
 }
@@ -81,8 +93,7 @@ export async function deleteFile(nodeId: string): Promise<void> {
 export async function getFileBuffer(
   nodeId: string,
 ): Promise<Buffer> {
-  const storage = await getStorage();
-  const node = storage.files[nodeId];
+  const node = await getNode(nodeId);
   if (!node) throw new Error("File not found on Mega");
   return await node.downloadBuffer({});
 }
