@@ -21,7 +21,7 @@ async function getCaseContext(supabase: ReturnType<typeof createServerClient>, c
   return {
     clientName,
     caseTitle,
-    folderPath: `/TrueLegal/${sanitize(clientName)}/${sanitize(caseTitle)}/${caseId}`,
+    folderPath: `/True Legal System/${sanitize(clientName)}/${sanitize(caseTitle)}/${caseId}`,
   };
 }
 
