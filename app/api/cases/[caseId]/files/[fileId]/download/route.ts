@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { getFileBuffer } from "@/lib/mega";
+import { buildFolderPath, getFileBuffer } from "@/lib/mega";
 
 export async function GET(
   request: NextRequest,
@@ -38,7 +38,20 @@ export async function GET(
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    const buffer = await getFileBuffer(dbFile.mega_node_id);
+    const { data: caseData } = await supabase
+      .from("cases")
+      .select("title, clients!cases_client_id_fkey(name)")
+      .eq("id", caseId)
+      .single();
+
+    const clientName = caseData ? (caseData.clients as { name: string }[])[0]?.name ?? "" : "";
+    const caseTitle = caseData ? caseData.title : "";
+    const folderPath = buildFolderPath(clientName, caseTitle, caseId);
+
+    const buffer = await getFileBuffer(dbFile.mega_node_id, {
+      folderPath,
+      filename: dbFile.filename,
+    });
 
     const isDownload = request.nextUrl.searchParams.get("download") === "1";
     const disposition = isDownload ? "attachment" : "inline";

@@ -1,6 +1,14 @@
 import { Storage } from "megajs";
 import type { MutableFile } from "megajs";
 
+export function sanitizeFilename(name: string): string {
+  return name.replace(/[/\\:*?"<>|]/g, "_").trim() || "_";
+}
+
+export function buildFolderPath(clientName: string, caseTitle: string, caseId: string): string {
+  return `/True Legal System/${sanitizeFilename(clientName)}/${sanitizeFilename(caseTitle)}/${caseId}`;
+}
+
 let storageInstance: Storage | null = null;
 
 async function getStorage(): Promise<Storage> {
@@ -71,29 +79,55 @@ export async function listFilesFromMega(folderPath: string): Promise<
     }));
 }
 
-async function getNode(nodeId: string) {
+async function reloadTree(): Promise<Storage> {
   const storage = await getStorage();
-
-  if (storage.files[nodeId]) {
-    return storage.files[nodeId];
-  }
-
-  // The in-memory tree can go stale when folders are moved in the Mega
-  // web UI, so force a reload before giving up.
   await storage.reload(true);
+  return storage;
+}
+
+async function getNode(nodeId: string): Promise<MutableFile | undefined> {
+  const storage = await reloadTree();
   return storage.files[nodeId];
 }
 
-export async function deleteFile(nodeId: string): Promise<void> {
-  const node = await getNode(nodeId);
+// Resolves a file by its folder path + filename. Used as a fallback for
+// records whose stored mega_node_id is stale (e.g. files moved to a
+// different Mega account or folder layout).
+async function findFileByPath(
+  folderPath: string,
+  filename: string,
+): Promise<MutableFile | undefined> {
+  const storage = await reloadTree();
+  const parts = folderPath.split("/").filter(Boolean);
+  const folder = storage.root.navigate(parts);
+  if (!folder) return undefined;
+  return folder.children?.find((c) => !c.directory && c.name === filename);
+}
+
+export async function deleteFile(
+  nodeId: string,
+  fallback?: { folderPath: string; filename: string },
+): Promise<void> {
+  let node = await getNode(nodeId);
+
+  if (!node && fallback) {
+    node = await findFileByPath(fallback.folderPath, fallback.filename);
+  }
+
   if (!node) throw new Error("File not found on Mega");
   await node.delete(true);
 }
 
 export async function getFileBuffer(
   nodeId: string,
+  fallback?: { folderPath: string; filename: string },
 ): Promise<Buffer> {
-  const node = await getNode(nodeId);
+  let node = await getNode(nodeId);
+
+  if (!node && fallback) {
+    node = await findFileByPath(fallback.folderPath, fallback.filename);
+  }
+
   if (!node) throw new Error("File not found on Mega");
   return await node.downloadBuffer({});
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { deleteFile } from "@/lib/mega";
+import { buildFolderPath, deleteFile } from "@/lib/mega";
 
 export async function DELETE(
   request: NextRequest,
@@ -43,7 +43,20 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await deleteFile(dbFile.mega_node_id);
+    const { data: caseData } = await supabase
+      .from("cases")
+      .select("title, clients!cases_client_id_fkey(name)")
+      .eq("id", caseId)
+      .single();
+
+    const clientName = caseData ? (caseData.clients as { name: string }[])[0]?.name ?? "" : "";
+    const caseTitle = caseData ? caseData.title : "";
+    const folderPath = buildFolderPath(clientName, caseTitle, caseId);
+
+    await deleteFile(dbFile.mega_node_id, {
+      folderPath,
+      filename: dbFile.filename,
+    });
 
     const { error: deleteError } = await supabase
       .from("case_files")

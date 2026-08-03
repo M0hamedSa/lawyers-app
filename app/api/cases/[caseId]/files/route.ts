@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { uploadFile } from "@/lib/mega";
-
-function sanitize(name: string): string {
-  return name.replace(/[/\\:*?"<>|]/g, "_").trim() || "_";
-}
+import { buildFolderPath, uploadFile } from "@/lib/mega";
 
 async function getCaseContext(supabase: ReturnType<typeof createServerClient>, caseId: string) {
   const { data: caseData } = await supabase
@@ -21,7 +17,7 @@ async function getCaseContext(supabase: ReturnType<typeof createServerClient>, c
   return {
     clientName,
     caseTitle,
-    folderPath: `/True Legal System/${sanitize(clientName)}/${sanitize(caseTitle)}/${caseId}`,
+    folderPath: buildFolderPath(clientName, caseTitle, caseId),
   };
 }
 
