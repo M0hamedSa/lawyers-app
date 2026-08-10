@@ -126,6 +126,11 @@ export function TasksPageClient({
               ...(isManager
                 ? [
                     {
+                      key: "assignedTo",
+                      header: t("columns.assignedTo"),
+                      cell: (task: Task) => <span className="text-ink-600 dark:text-ink-300">{task.user_name || "-"}</span>,
+                    },
+                    {
                       key: "assignedBy",
                       header: t("columns.assignedBy"),
                       cell: (task: Task) => <span className="text-ink-500 dark:text-ink-400">{task.assigned_by_name ?? "-"}</span>,

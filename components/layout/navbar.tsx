@@ -111,8 +111,9 @@ export function Navbar({
             <>
               <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
               <div className={cn(
-                "absolute end-0 z-20 mt-2 w-64 rounded-xl border border-ink-100 bg-white p-3 shadow-dropdown dark:border-ink-800 dark:bg-ink-900",
-                "animate-in fade-in slide-in-from-top-1 duration-150"
+                "absolute z-20 mt-2 w-[min(16rem,calc(100vw-2rem))] rounded-xl border border-ink-100 bg-white p-3 shadow-dropdown dark:border-ink-800 dark:bg-ink-900",
+                "animate-in fade-in slide-in-from-top-1 duration-150",
+                isRtl ? "left-0" : "right-0",
               )}>
                 {/* User info */}
                 <div className="mb-3 rounded-lg bg-ink-50 px-3.5 py-2.5 dark:bg-ink-800/60">

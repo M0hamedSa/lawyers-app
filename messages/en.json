@@ -29,7 +29,9 @@
     "markAllRead": "Mark all as read",
     "clearAll": "Clear",
     "viewAll": "View all",
-    "loadMore": "Load more",
+    "prevPage": "Previous",
+    "nextPage": "Next",
+    "pageLabel": "Page {page}",
     "newTransaction": "{actor} added a {type} of {amount} for {client}",
     "caseAssigned": "{actor} assigned you to {case} ({priority} priority)"
   },
@@ -175,6 +177,7 @@
     },
     "assignedTo": "Assigned to",
     "unassigned": "Unassigned",
+    "allAssigned": "All users are already assigned",
     "addAssignee": "Add",
     "exportCaseReport": "Export Case Report",
     "exportClientReport": "Export Client Report",
@@ -194,6 +197,7 @@
       "client": "Client",
       "priority": "Priority",
       "status": "Status",
+      "assignedTo": "Assigned to",
       "assignedBy": "Assigned by",
       "assignedAt": "Assigned"
     }

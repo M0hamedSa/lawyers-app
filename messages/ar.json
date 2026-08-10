@@ -29,7 +29,9 @@
     "markAllRead": "تعليم الكل كمقروء",
     "clearAll": "مسح",
     "viewAll": "عرض الكل",
-    "loadMore": "تحميل المزيد",
+    "prevPage": "السابق",
+    "nextPage": "التالي",
+    "pageLabel": "صفحة {page}",
     "newTransaction": "{actor} أضاف {type} بمبلغ {amount} لـ {client}",
     "caseAssigned": "{actor} أسند إليك {case} (أولوية {priority})"
   },
@@ -175,6 +177,7 @@
     },
     "assignedTo": "مسندة إلى",
     "unassigned": "غير مسندة",
+    "allAssigned": "تم تعيين جميع المستخدمين بالفعل",
     "addAssignee": "إضافة",
     "exportCaseReport": "تصدير تقرير المهمة",
     "exportClientReport": "تصدير تقرير العميل (مفصل بالمهام)",
@@ -194,6 +197,7 @@
       "client": "العميل",
       "priority": "الأولوية",
       "status": "الحالة",
+      "assignedTo": "مسندة إلى",
       "assignedBy": "بواسطة",
       "assignedAt": "تاريخ التعيين"
     }

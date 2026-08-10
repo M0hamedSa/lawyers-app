@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import type { Route } from "next";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Edit2, Trash2, Download, Eye, FileText, Plus, Loader2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Edit2, Trash2, Download, Eye, FileText, Plus, Loader2, RotateCcw, X, UserPlus } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -783,31 +783,59 @@ export function ClientDetailsClient({
           {(userRole === "admin" || userRole === "superadmin") && (
             <div className="space-y-2">
               <label className="text-title-sm text-ink-800 dark:text-ink-100">{tCases("form.assignees")}</label>
-              <div className="max-h-48 overflow-y-auto rounded-md border border-ink-100 dark:border-ink-700">
-                <div className="divide-y divide-ink-50 dark:divide-ink-700">
-                  {allUsers.map((u) => {
-                    const checked = form.assignee_ids.includes(u.id);
+
+              {form.assignee_ids.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {form.assignee_ids.map((id) => {
+                    const u = allUsers.find((user) => user.id === id);
                     return (
-                      <label
-                        key={u.id}
-                        className="flex cursor-pointer items-center justify-between gap-2 p-2.5 hover:bg-ink-50 dark:hover:bg-ink-800"
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1 rounded-full bg-accent-50 py-1 ps-3 pe-1 text-xs font-medium text-accent-700 dark:bg-accent-950/30 dark:text-accent-400"
                       >
-                        <span className="text-sm font-medium text-ink-800 dark:text-ink-100">{u.full_name}</span>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() =>
+                        {u?.full_name ?? ""}
+                        <button
+                          type="button"
+                          onClick={() =>
                             setForm((current) => ({
                               ...current,
-                              assignee_ids: checked
-                                ? current.assignee_ids.filter((id) => id !== u.id)
-                                : [...current.assignee_ids, u.id],
+                              assignee_ids: current.assignee_ids.filter((assigneeId) => assigneeId !== id),
                             }))
                           }
-                        />
-                      </label>
+                          className="inline-flex size-4 items-center justify-center rounded-full text-accent-500 hover:bg-accent-100 hover:text-accent-800 dark:hover:bg-accent-900/40"
+                          aria-label={tCommon("delete")}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
                     );
                   })}
+                </div>
+              )}
+
+              <div className="max-h-40 overflow-y-auto rounded-md border border-ink-100 dark:border-ink-700">
+                <div className="divide-y divide-ink-50 dark:divide-ink-700">
+                  {allUsers
+                    .filter((u) => !form.assignee_ids.includes(u.id))
+                    .map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() =>
+                          setForm((current) => ({
+                            ...current,
+                            assignee_ids: [...current.assignee_ids, u.id],
+                          }))
+                        }
+                        className="flex w-full items-center justify-between gap-2 p-2.5 text-start transition-colors hover:bg-ink-50 dark:hover:bg-ink-800"
+                      >
+                        <span className="text-sm font-medium text-ink-800 dark:text-ink-100">{u.full_name}</span>
+                        <UserPlus className="size-3.5 shrink-0 text-ink-400" />
+                      </button>
+                    ))}
+                  {allUsers.length === form.assignee_ids.length && (
+                    <p className="p-3 text-center text-xs text-ink-400">{tCases("allAssigned")}</p>
+                  )}
                 </div>
               </div>
             </div>

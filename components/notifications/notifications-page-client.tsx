@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
-import { Bell, Check, Loader2 } from "lucide-react";
+import { Bell, Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -25,8 +25,14 @@ export function NotificationsPageClient({
   const supabase = useMemo(() => createClient(), []);
 
   const [notifications, setNotifications] = useState(initialNotifications);
+  const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(initialNotifications.length >= NOTIFICATIONS_PAGE_SIZE);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const pageRef = useRef(page);
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
 
   useEffect(() => {
     const channel = supabase
@@ -40,9 +46,12 @@ export function NotificationsPageClient({
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
+          if (pageRef.current !== 0) return;
           const next = payload.new as AppNotification;
           setNotifications((current) =>
-            current.some((n) => n.id === next.id) ? current : [next, ...current],
+            current.some((n) => n.id === next.id)
+              ? current
+              : [next, ...current].slice(0, NOTIFICATIONS_PAGE_SIZE),
           );
         },
       )
@@ -73,20 +82,23 @@ export function NotificationsPageClient({
       .eq("is_read", false);
   }
 
-  async function loadMore() {
-    setLoadingMore(true);
+  async function goToPage(targetPage: number) {
+    setLoading(true);
+    const from = targetPage * NOTIFICATIONS_PAGE_SIZE;
+    const to = from + NOTIFICATIONS_PAGE_SIZE - 1;
     const { data, error } = await supabase
       .from("notifications")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .range(notifications.length, notifications.length + NOTIFICATIONS_PAGE_SIZE - 1);
+      .range(from, to);
 
     if (!error && data) {
-      setNotifications((current) => [...current, ...(data as AppNotification[])]);
+      setNotifications(data as AppNotification[]);
       setHasMore(data.length >= NOTIFICATIONS_PAGE_SIZE);
+      setPage(targetPage);
     }
-    setLoadingMore(false);
+    setLoading(false);
   }
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -115,7 +127,7 @@ export function NotificationsPageClient({
           const content = (
             <div
               className={cn(
-                "flex items-start gap-3 rounded-lg px-3 py-3 transition-colors",
+                "flex items-start gap-3 rounded-lg border border-ink-100 px-3 py-3 transition-colors hover:bg-ink-50 dark:border-ink-800 dark:hover:bg-ink-800/60",
                 !n.is_read && "bg-accent-50/60 dark:bg-accent-950/20",
               )}
             >
@@ -145,16 +157,29 @@ export function NotificationsPageClient({
           );
         })}
 
-        {hasMore && (
-          <div className="pt-2 text-center">
+        {(page > 0 || hasMore) && notifications.length > 0 && (
+          <div className="flex items-center justify-between gap-3 pt-3">
             <button
               type="button"
-              onClick={loadMore}
-              disabled={loadingMore}
-              className="inline-flex items-center gap-1.5 text-body-sm text-accent-600 transition-colors hover:text-accent-700 disabled:opacity-60 dark:text-accent-400 dark:hover:text-accent-300"
+              onClick={() => goToPage(page - 1)}
+              disabled={page === 0 || loading}
+              className="inline-flex items-center gap-1 text-body-sm text-accent-600 transition-colors hover:text-accent-700 disabled:opacity-40 dark:text-accent-400 dark:hover:text-accent-300"
             >
-              {loadingMore && <Loader2 className="size-3.5 animate-spin" />}
-              {t("loadMore")}
+              <ChevronLeft className="size-3.5" />
+              {t("prevPage")}
+            </button>
+            <span className="flex items-center gap-1.5 text-caption text-ink-400">
+              {loading && <Loader2 className="size-3.5 animate-spin" />}
+              {t("pageLabel", { page: page + 1 })}
+            </span>
+            <button
+              type="button"
+              onClick={() => goToPage(page + 1)}
+              disabled={!hasMore || loading}
+              className="inline-flex items-center gap-1 text-body-sm text-accent-600 transition-colors hover:text-accent-700 disabled:opacity-40 dark:text-accent-400 dark:hover:text-accent-300"
+            >
+              {t("nextPage")}
+              <ChevronRight className="size-3.5" />
             </button>
           </div>
         )}

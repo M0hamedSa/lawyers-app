@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Plus, Loader2, Edit2, Trash2, X, UserPlus } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Edit2, Trash2, X, UserPlus, ChevronDown } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -368,20 +368,23 @@ export function CaseDetailsClient({
               {tCases("status." + caseStatus)}
             </span>
             {canManageAssignment ? (
-              <select
-                value={priority}
-                onChange={(e) => updatePriority(e.target.value as CasePriority)}
-                className={cn(
-                  "cursor-pointer rounded-full border-0 px-2 py-0.5 text-xs font-medium",
-                  priorityBadgeClasses[priority],
-                )}
-              >
-                {priorityOrder.map((p) => (
-                  <option key={p} value={p}>
-                    {tCases(`priority.${p}`)}
-                  </option>
-                ))}
-              </select>
+              <span className="relative inline-flex items-center">
+                <select
+                  value={priority}
+                  onChange={(e) => updatePriority(e.target.value as CasePriority)}
+                  className={cn(
+                    "cursor-pointer appearance-none rounded-full border-0 py-0.5 ps-2 pe-5 text-xs font-medium outline-none focus:ring-2 focus:ring-accent-500/30",
+                    priorityBadgeClasses[priority],
+                  )}
+                >
+                  {priorityOrder.map((p) => (
+                    <option key={p} value={p}>
+                      {tCases(`priority.${p}`)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute end-1.5 size-2.5" aria-hidden />
+              </span>
             ) : (
               <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", priorityBadgeClasses[priority])}>
                 {tCases(`priority.${priority}`)}
@@ -708,7 +711,7 @@ export function CaseDetailsClient({
                   </div>
                 ))}
               {allUsers.filter((u) => !assignees.some((a) => a.id === u.id)).length === 0 && (
-                <p className="p-4 text-center text-sm text-ink-400">{tCases("unassigned")}</p>
+                <p className="p-4 text-center text-sm text-ink-400">{tCases("allAssigned")}</p>
               )}
             </div>
           </div>

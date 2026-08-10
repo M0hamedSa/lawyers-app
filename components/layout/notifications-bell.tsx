@@ -133,7 +133,10 @@ export function NotificationsBell({
         >
           <Bell className="size-4" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 end-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-error-500 px-1 text-[10px] font-bold leading-none text-white">
+            <span className={cn(
+              "absolute -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error-500 px-1 text-[10px] font-bold leading-none text-white",
+              isRtl ? "-left-0.5" : "-right-0.5",
+            )}>
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -144,8 +147,9 @@ export function NotificationsBell({
             <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
             <div
               className={cn(
-                "absolute end-0 z-20 mt-2 w-80 rounded-xl border border-ink-100 bg-white p-3 shadow-dropdown dark:border-ink-800 dark:bg-ink-900",
+                "absolute z-20 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-ink-100 bg-white p-3 shadow-dropdown dark:border-ink-800 dark:bg-ink-900",
                 "animate-in fade-in slide-in-from-top-1 duration-150",
+                isRtl ? "left-0" : "right-0",
               )}
               dir={isRtl ? "rtl" : "ltr"}
             >
@@ -224,8 +228,8 @@ export function NotificationsBell({
 
       <div
         className={cn(
-          "fixed top-16 z-50 flex w-80 flex-col gap-2",
-          isRtl ? "start-4" : "end-4",
+          "fixed top-16 z-50 flex w-[min(20rem,calc(100vw-2rem))] flex-col gap-2",
+          isRtl ? "left-4" : "right-4",
         )}
       >
         {toasts.map((n) => {

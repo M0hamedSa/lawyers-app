@@ -84,7 +84,7 @@ export function Sidebar({
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 flex items-center justify-around w-full lg:flex-col lg:justify-start lg:gap-0.5 lg:overflow-y-auto lg:px-3 lg:py-6">
+      <nav className="flex-1 flex items-center gap-0.5 w-full overflow-x-auto overflow-y-hidden px-1 [-webkit-overflow-scrolling:touch] lg:flex-col lg:justify-start lg:gap-0.5 lg:overflow-y-auto lg:overflow-x-visible lg:px-3 lg:py-6">
         {navItems
           .filter((item) => {
             if (item.superadminOnly && userRole !== "superadmin") return false;
@@ -100,8 +100,8 @@ export function Sidebar({
                 data-nav-item
                 href={item.href}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 text-[11px] font-medium transition-colors w-full max-w-[84px]",
-                  "lg:flex-row lg:justify-start lg:gap-3 lg:py-3 lg:px-3.5 lg:text-[15px] lg:max-w-none lg:w-full lg:rounded-md",
+                  "relative flex shrink-0 flex-col items-center justify-center gap-0.5 py-1.5 px-3 text-[11px] font-medium transition-colors w-auto min-w-[64px] max-w-[84px]",
+                  "lg:flex-row lg:justify-start lg:gap-3 lg:py-3 lg:px-3.5 lg:text-[15px] lg:max-w-none lg:w-full lg:min-w-0 lg:shrink lg:rounded-md",
                   active
                     ? "text-accent-600 dark:text-accent-400 lg:text-accent-700 lg:bg-accent-50 lg:dark:text-accent-300 lg:dark:bg-accent-950/30"
                     : "text-ink-400 hover:text-ink-700 dark:text-ink-500 dark:hover:text-ink-200 lg:text-ink-500 lg:hover:text-ink-700 lg:hover:bg-ink-50 lg:dark:text-ink-400 lg:dark:hover:text-ink-100 lg:dark:hover:bg-ink-900/60",
