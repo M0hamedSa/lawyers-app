@@ -38,6 +38,13 @@ exception
   when duplicate_object then null;
 end $$;
 
+do $$
+begin
+  create type public.case_priority as enum ('low', 'medium', 'high', 'urgent');
+exception
+  when duplicate_object then null;
+end $$;
+
 create table if not exists public.users (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
@@ -69,6 +76,8 @@ create table if not exists public.cases (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.cases add column if not exists priority public.case_priority not null default 'medium';
 
 create table if not exists public.client_access (
   id uuid primary key default gen_random_uuid(),
@@ -426,14 +435,36 @@ to authenticated
 using (
   exists (
     select 1 from public.users u
-    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+    where u.id = auth.uid() and u.role = 'superadmin'
+  )
+  or (
+    exists (
+      select 1 from public.users u
+      where u.id = auth.uid() and u.role = 'admin'
+    )
+    and type != 'system'
+    and not exists (
+      select 1 from public.users creator
+      where creator.id = transactions.created_by and creator.role = 'superadmin'
+    )
   )
   or created_by = auth.uid()
 )
 with check (
   exists (
     select 1 from public.users u
-    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+    where u.id = auth.uid() and u.role = 'superadmin'
+  )
+  or (
+    exists (
+      select 1 from public.users u
+      where u.id = auth.uid() and u.role = 'admin'
+    )
+    and type != 'system'
+    and not exists (
+      select 1 from public.users creator
+      where creator.id = transactions.created_by and creator.role = 'superadmin'
+    )
   )
   or (
     type = 'office'
@@ -455,7 +486,18 @@ to authenticated
 using (
   exists (
     select 1 from public.users u
-    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+    where u.id = auth.uid() and u.role = 'superadmin'
+  )
+  or (
+    exists (
+      select 1 from public.users u
+      where u.id = auth.uid() and u.role = 'admin'
+    )
+    and type != 'system'
+    and not exists (
+      select 1 from public.users creator
+      where creator.id = transactions.created_by and creator.role = 'superadmin'
+    )
   )
 );
 
@@ -574,3 +616,180 @@ to authenticated
 using (
   user_id = auth.uid()
 );
+
+-- -----------------------------------------------------------------------
+-- Notifications (live admin/superadmin alerts on new transactions)
+-- -----------------------------------------------------------------------
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  actor_id uuid references public.users(id) on delete set null,
+  actor_name text not null,
+  type text not null default 'transaction_created',
+  transaction_id uuid references public.transactions(id) on delete cascade,
+  transaction_type public.transaction_type,
+  amount numeric(12, 2),
+  client_id uuid references public.clients(id) on delete cascade,
+  client_name text,
+  case_id uuid references public.cases(id) on delete cascade,
+  case_title text,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists notifications_user_id_created_at_idx on public.notifications (user_id, created_at desc);
+create index if not exists notifications_user_id_unread_idx on public.notifications (user_id) where is_read = false;
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "Users can read own notifications" on public.notifications;
+create policy "Users can read own notifications"
+on public.notifications for select
+to authenticated
+using (
+  user_id = auth.uid()
+);
+
+drop policy if exists "Users can update own notifications" on public.notifications;
+create policy "Users can update own notifications"
+on public.notifications for update
+to authenticated
+using (
+  user_id = auth.uid()
+)
+with check (
+  user_id = auth.uid()
+);
+
+create or replace function public.notify_admins_of_transaction()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_actor_name text;
+  v_client_name text;
+  v_case_title text;
+  recipient record;
+begin
+  select full_name into v_actor_name from public.users where id = new.created_by;
+  select name into v_client_name from public.clients where id = new.client_id;
+  if new.case_id is not null then
+    select title into v_case_title from public.cases where id = new.case_id;
+  end if;
+
+  for recipient in
+    select id from public.users
+    where role in ('admin', 'superadmin')
+      and id is distinct from new.created_by
+      and (new.type != 'profit' or role = 'superadmin')
+  loop
+    insert into public.notifications (
+      user_id, actor_id, actor_name, transaction_id, transaction_type,
+      amount, client_id, client_name, case_id, case_title
+    )
+    values (
+      recipient.id, new.created_by, coalesce(v_actor_name, 'Someone'), new.id, new.type,
+      new.amount, new.client_id, v_client_name, new.case_id, v_case_title
+    );
+  end loop;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_notify_admins_of_transaction on public.transactions;
+create trigger trg_notify_admins_of_transaction
+after insert on public.transactions
+for each row execute function public.notify_admins_of_transaction();
+
+do $$
+begin
+  alter publication supabase_realtime add table public.notifications;
+exception
+  when duplicate_object then null;
+  when undefined_object then null;
+end $$;
+
+alter table public.notifications add column if not exists cleared_at timestamptz;
+
+-- -----------------------------------------------------------------------
+-- Case assignees (multi-user "assigned to" on a case + live notification)
+-- -----------------------------------------------------------------------
+alter table public.notifications add column if not exists priority public.case_priority;
+
+create table if not exists public.case_assignees (
+  id uuid primary key default gen_random_uuid(),
+  case_id uuid not null references public.cases(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  assigned_by uuid references public.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (case_id, user_id)
+);
+
+create index if not exists case_assignees_case_id_idx on public.case_assignees (case_id);
+create index if not exists case_assignees_user_id_idx on public.case_assignees (user_id);
+
+alter table public.case_assignees enable row level security;
+
+drop policy if exists "Users can read case assignees they can access" on public.case_assignees;
+create policy "Users can read case assignees they can access"
+on public.case_assignees for select
+to authenticated
+using (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+  or exists (
+    select 1 from public.client_access ca
+    join public.cases cs on cs.client_id = ca.client_id
+    where cs.id = case_assignees.case_id and ca.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Admins can manage case assignees" on public.case_assignees;
+create policy "Admins can manage case assignees"
+on public.case_assignees
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+);
+
+create or replace function public.notify_case_assignment()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_actor_name text;
+  v_case_title text;
+  v_client_id uuid;
+  v_client_name text;
+  v_priority public.case_priority;
+begin
+  if new.user_id is distinct from new.assigned_by then
+    select full_name into v_actor_name from public.users where id = new.assigned_by;
+    select title, client_id, priority into v_case_title, v_client_id, v_priority
+      from public.cases where id = new.case_id;
+    select name into v_client_name from public.clients where id = v_client_id;
+
+    insert into public.notifications (
+      user_id, actor_id, actor_name, type, case_id, case_title, client_id, client_name, priority
+    )
+    values (
+      new.user_id, new.assigned_by, coalesce(v_actor_name, 'Someone'), 'case_assigned',
+      new.case_id, v_case_title, v_client_id, v_client_name, v_priority
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_notify_case_assignment on public.case_assignees;
+create trigger trg_notify_case_assignment
+after insert on public.case_assignees
+for each row execute function public.notify_case_assignment();

@@ -5,7 +5,7 @@ import gsap from "gsap";
 import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
-import { BriefcaseBusiness, LayoutDashboard, History, Users, Building2 } from "lucide-react";
+import { BriefcaseBusiness, LayoutDashboard, History, Users, Building2, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -18,6 +18,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "/dashboard", translationKey: "Dashboard.title", icon: LayoutDashboard },
   { href: "/clients", translationKey: "Clients.title", icon: BriefcaseBusiness },
+  { href: "/tasks", translationKey: "Tasks.title", icon: ListTodo },
   { href: "/admin/transactions", translationKey: "Admin.allTransactions", icon: History, superadminOnly: true },
   { href: "/admin/users",        translationKey: "Admin.manageUsers",    icon: Users,           superadminOnly: true },
   { href: "/admin/cash-advance", translationKey: "Admin.cashAdvances",   icon: BriefcaseBusiness, superadminOnly: true },
@@ -36,6 +37,7 @@ export function Sidebar({
   const tDashboard = useTranslations("Dashboard");
   const tClients = useTranslations("Clients");
   const tAdmin = useTranslations("Admin");
+  const tTasks = useTranslations("Tasks");
 
   useEffect(() => {
     const links = document.querySelectorAll("[data-nav-item]");
@@ -51,6 +53,7 @@ export function Sidebar({
   function getLabel(key: string) {
     if (key === "Dashboard.title") return tDashboard("title");
     if (key === "Clients.title") return tClients("title");
+    if (key === "Tasks.title") return tTasks("title");
     if (key === "Admin.allTransactions") return tAdmin("allTransactions");
     if (key === "Admin.manageUsers") return tAdmin("manageUsers");
     if (key === "Admin.cashAdvances") return tAdmin("cashAdvances");

@@ -8,17 +8,25 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { signOutAction } from "@/app/[locale]/(auth)/login/actions";
 import { THEME_STORAGE_KEY, applyTheme } from "./theme-toggle";
 import { ClientSelector } from "./client-selector";
+import { NotificationsBell } from "./notifications-bell";
+import type { AppNotification } from "@/lib/supabase/types";
 
 export function Navbar({
+  userId,
   userRole,
   userName,
   financials,
   clients = [],
+  notifications = [],
+  unreadNotificationCount = 0,
 }: {
+  userId: string | null;
   userRole: "superadmin" | "admin" | "user" | null;
   userName: string;
   financials: { cashAdvance: number; totalExpenses: number; balance: number } | null;
   clients?: { id: string; name: string }[];
+  notifications?: AppNotification[];
+  unreadNotificationCount?: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -72,6 +80,15 @@ export function Navbar({
 
       {/* Actions */}
       <div className="flex flex-row-reverse items-center gap-1">
+
+        {/* Notifications */}
+        {userId && (
+          <NotificationsBell
+            userId={userId}
+            initialNotifications={notifications}
+            initialUnreadCount={unreadNotificationCount}
+          />
+        )}
 
         {/* User menu */}
         <div className="relative">

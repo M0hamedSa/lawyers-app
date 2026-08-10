@@ -2,6 +2,9 @@ export type UserRole = "superadmin" | "admin" | "user";
 export type TransactionType = "payment" | "expense" | "profit" | "office" | "system";
 export type VoucherType = "cash" | "bank_transfer" | "receipt" | "card" | "other";
 export type ProfitType = "monthly" | "per_case";
+export type CasePriority = "low" | "medium" | "high" | "urgent";
+
+export const NOTIFICATIONS_PAGE_SIZE = 30;
 
 export type Client = {
   id: string;
@@ -23,10 +26,35 @@ export type Case = {
   title: string;
   description: string | null;
   status: string;
+  priority: CasePriority;
   profit_amount: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type CaseAssignee = {
+  id: string;
+  case_id: string;
+  user_id: string;
+  full_name: string;
+  assigned_by: string | null;
+  created_at: string;
+};
+
+export type Task = {
+  id: string;
+  case_id: string;
+  case_title: string;
+  case_status: string;
+  priority: CasePriority;
+  client_id: string;
+  client_name: string;
+  user_id: string;
+  user_name: string;
+  assigned_by: string | null;
+  assigned_by_name: string | null;
+  created_at: string;
 };
 
 export type LedgerTransaction = {
@@ -83,6 +111,26 @@ export type CaseWithSummary = Case & {
   total_payments: number;
   total_expenses: number;
   balance: number;
+  assignees: { id: string; full_name: string }[];
+};
+
+export type AppNotification = {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  actor_name: string;
+  type: string;
+  transaction_id: string | null;
+  transaction_type: TransactionType | null;
+  amount: number | null;
+  client_id: string | null;
+  client_name: string | null;
+  case_id: string | null;
+  case_title: string | null;
+  priority: CasePriority | null;
+  is_read: boolean;
+  cleared_at: string | null;
+  created_at: string;
 };
 
 export type CaseFile = {
@@ -208,6 +256,7 @@ export type Database = {
           title: string;
           description?: string | null;
           status?: string;
+          priority?: CasePriority;
           profit_amount?: number | null;
           created_by?: string | null;
         };
@@ -215,6 +264,7 @@ export type Database = {
           title?: string;
           description?: string | null;
           status?: string;
+          priority?: CasePriority;
           profit_amount?: number | null;
         };
         Relationships: [
@@ -228,6 +278,44 @@ export type Database = {
           {
             foreignKeyName: "cases_created_by_fkey";
             columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      case_assignees: {
+        Row: {
+          id: string;
+          case_id: string;
+          user_id: string;
+          assigned_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          case_id: string;
+          user_id: string;
+          assigned_by?: string | null;
+        };
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: "case_assignees_case_id_fkey";
+            columns: ["case_id"];
+            isOneToOne: false;
+            referencedRelation: "cases";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "case_assignees_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "case_assignees_assigned_by_fkey";
+            columns: ["assigned_by"];
             isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];
@@ -347,6 +435,65 @@ export type Database = {
           },
         ],
       },
+      notifications: {
+        Row: AppNotification;
+        Insert: {
+          user_id: string;
+          actor_id?: string | null;
+          actor_name: string;
+          type?: string;
+          transaction_id?: string | null;
+          transaction_type?: TransactionType | null;
+          amount?: number | null;
+          client_id?: string | null;
+          client_name?: string | null;
+          case_id?: string | null;
+          case_title?: string | null;
+          priority?: CasePriority | null;
+          is_read?: boolean;
+        };
+        Update: {
+          is_read?: boolean;
+          cleared_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_actor_id_fkey";
+            columns: ["actor_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_transaction_id_fkey";
+            columns: ["transaction_id"];
+            isOneToOne: false;
+            referencedRelation: "transactions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_case_id_fkey";
+            columns: ["case_id"];
+            isOneToOne: false;
+            referencedRelation: "cases";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     },
     Views: {
       client_financial_summary: {
@@ -380,6 +527,7 @@ export type Database = {
       transaction_type: TransactionType;
       voucher_type: VoucherType;
       profit_type: ProfitType;
+      case_priority: CasePriority;
     };
     CompositeTypes: Record<string, never>;
   };

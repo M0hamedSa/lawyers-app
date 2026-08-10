@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { CaseDetailsClient } from "@/components/cases/case-details-client";
-import { getClient, getCase, getCaseTransactions, getCurrentUser } from "@/lib/supabase/queries";
+import { getClient, getCase, getCaseTransactions, getCurrentUser, getAllUsers } from "@/lib/supabase/queries";
 import { decodeId } from "@/lib/id-utils";
 
 export const dynamic = "force-dynamic";
@@ -26,22 +26,24 @@ export default async function CaseDetailsPage({ params }: { params: Promise<{ id
   const caseId = decodeId(caseHash);
 
   try {
-    const [client, caseData, transactions, currentUser] = await Promise.all([
+    const [client, caseData, transactions, currentUser, allUsers] = await Promise.all([
       getClient(clientId),
       getCase(caseId),
       getCaseTransactions(caseId),
       getCurrentUser(),
+      getAllUsers(),
     ]);
 
     if (caseData.client_id !== clientId) {
       notFound();
     }
 
-    return <CaseDetailsClient 
-      client={client} 
+    return <CaseDetailsClient
+      client={client}
       caseData={caseData}
-      initialTransactions={transactions} 
+      initialTransactions={transactions}
       currentUser={currentUser}
+      allUsers={(allUsers ?? []).map((u) => ({ id: u.id, full_name: u.full_name, role: u.role }))}
     />;
   } catch {
     notFound();

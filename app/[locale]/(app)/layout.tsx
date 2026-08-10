@@ -1,14 +1,15 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Navbar } from "@/components/layout/navbar";
-import { getCurrentUser, getUserFinancials, getAdminClients } from "@/lib/supabase/queries";
+import { getCurrentUser, getUserFinancials, getAdminClients, getNotifications } from "@/lib/supabase/queries";
 import { getLocale } from "next-intl/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const [user, financials, locale, clients] = await Promise.all([
+  const [user, financials, locale, clients, { notifications, unreadCount }] = await Promise.all([
     getCurrentUser(),
     getUserFinancials(),
     getLocale(),
     getAdminClients(),
+    getNotifications(),
   ]);
 
   const isRtl = locale === "ar";
@@ -17,10 +18,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="h-screen overflow-hidden bg-ink-50 text-ink-800 transition-colors dark:bg-ink-950 dark:text-ink-100">
       <Sidebar userRole={user?.role ?? null} />
       <Navbar
+        userId={user?.id ?? null}
         userRole={user?.role ?? null}
         userName={user?.full_name ?? ""}
         financials={financials}
         clients={clients ?? []}
+        notifications={notifications}
+        unreadNotificationCount={unreadCount}
       />
       <main
         className={

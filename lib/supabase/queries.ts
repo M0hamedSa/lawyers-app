@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ClientWithSummary, LedgerTransaction } from "@/lib/supabase/types";
+import { NOTIFICATIONS_PAGE_SIZE } from "@/lib/supabase/types";
+import type { AppNotification, CasePriority, ClientWithSummary, LedgerTransaction, Task } from "@/lib/supabase/types";
 
 type ClientRow = {
   id: string;
@@ -23,11 +24,13 @@ export type CaseRow = {
   title: string;
   description: string | null;
   status: string;
+  priority: CasePriority;
   profit_amount: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
   transactions: { amount: number; type: "payment" | "expense" | "office"; created_by?: string; is_cleared?: boolean }[];
+  case_assignees: { user_id: string; users: { full_name: string } | null }[];
 };
 
 type SummaryUser = { id: string; role: string };
@@ -89,6 +92,7 @@ export function caseWithSummary(c: CaseRow, currentUser: SummaryUser | null = nu
     title: c.title,
     description: c.description,
     status: c.status,
+    priority: c.priority,
     profit_amount: c.profit_amount,
     created_by: c.created_by,
     created_at: c.created_at,
@@ -96,6 +100,10 @@ export function caseWithSummary(c: CaseRow, currentUser: SummaryUser | null = nu
     total_payments: totals.total_payments,
     total_expenses: totals.total_expenses,
     balance: totals.total_payments - totals.total_expenses,
+    assignees: (c.case_assignees ?? []).map((a) => ({
+      id: a.user_id,
+      full_name: a.users?.full_name ?? "",
+    })),
   };
 }
 
@@ -142,7 +150,7 @@ export async function getCases(clientId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("cases")
-    .select("*, transactions(amount, type, created_by, is_cleared)")
+    .select("*, transactions(amount, type, created_by, is_cleared), case_assignees(user_id, users!case_assignees_user_id_fkey(full_name))")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
 
@@ -155,7 +163,7 @@ export async function getCase(caseId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("cases")
-    .select("*, transactions(amount, type, created_by)")
+    .select("*, transactions(amount, type, created_by), case_assignees(user_id, users!case_assignees_user_id_fkey(full_name))")
     .eq("id", caseId)
     .single();
 
@@ -174,6 +182,60 @@ export async function getCaseTransactions(caseId: string) {
 
   if (error) throw new Error(error.message);
   return (data ?? []) as (LedgerTransaction & { users: { full_name: string } | null })[];
+}
+
+type TaskAssigneeRow = {
+  id: string;
+  case_id: string;
+  user_id: string;
+  assigned_by: string | null;
+  created_at: string;
+  cases: {
+    title: string;
+    status: string;
+    priority: CasePriority;
+    client_id: string;
+    clients: { name: string } | null;
+  };
+  assignee: { full_name: string } | null;
+  assigner: { full_name: string } | null;
+};
+
+export async function getTasks(filters: { priority?: CasePriority; userId?: string } = {}): Promise<Task[]> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return [];
+
+  const isManager = currentUser.role === "admin" || currentUser.role === "superadmin";
+  const scopedUserId = isManager ? filters.userId : currentUser.id;
+
+  const supabase = await createClient();
+  let query = supabase
+    .from("case_assignees")
+    .select(
+      "id, case_id, user_id, assigned_by, created_at, cases!inner(title, status, priority, client_id, clients(name)), assignee:users!case_assignees_user_id_fkey(full_name), assigner:users!case_assignees_assigned_by_fkey(full_name)",
+    )
+    .order("created_at", { ascending: false });
+
+  if (scopedUserId) query = query.eq("user_id", scopedUserId);
+  if (filters.priority) query = query.eq("cases.priority", filters.priority);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as unknown as TaskAssigneeRow[]).map((row) => ({
+    id: row.id,
+    case_id: row.case_id,
+    case_title: row.cases.title,
+    case_status: row.cases.status,
+    priority: row.cases.priority,
+    client_id: row.cases.client_id,
+    client_name: row.cases.clients?.name ?? "",
+    user_id: row.user_id,
+    user_name: row.assignee?.full_name ?? "",
+    assigned_by: row.assigned_by,
+    assigned_by_name: row.assigner?.full_name ?? null,
+    created_at: row.created_at,
+  }));
 }
 
 export async function getDashboardData() {
@@ -349,6 +411,52 @@ export async function getUserFinancials() {
   const balance = cashAdvance - totalExpenses;
 
   return { cashAdvance, totalExpenses, balance };
+}
+
+export async function getNotifications(): Promise<{ notifications: AppNotification[]; unreadCount: number }> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return { notifications: [], unreadCount: 0 };
+  }
+
+  const supabase = await createClient();
+  const [listResult, countResult] = await Promise.all([
+    supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .is("cleared_at", null)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", currentUser.id)
+      .eq("is_read", false)
+      .is("cleared_at", null),
+  ]);
+
+  if (listResult.error) throw new Error(listResult.error.message);
+
+  return { notifications: listResult.data as AppNotification[], unreadCount: countResult.count ?? 0 };
+}
+
+export async function getAllNotifications(): Promise<AppNotification[]> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return [];
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", currentUser.id)
+    .order("created_at", { ascending: false })
+    .range(0, NOTIFICATIONS_PAGE_SIZE - 1);
+
+  if (error) throw new Error(error.message);
+  return data as AppNotification[];
 }
 
 export async function getAllUsers() {

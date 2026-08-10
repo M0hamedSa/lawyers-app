@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Plus, Loader2, Edit2, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Edit2, Trash2, X, UserPlus } from "lucide-react";
 import { ActionButton } from "@/components/ui/action-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 import type {
   ClientWithSummary,
   CaseWithSummary,
+  CasePriority,
   LedgerTransaction,
   TransactionType,
   VoucherType,
@@ -50,6 +51,15 @@ const voucherLabels: Record<VoucherType, string> = {
   other: "Other",
 };
 
+const priorityOrder: CasePriority[] = ["low", "medium", "high", "urgent"];
+
+const priorityBadgeClasses: Record<CasePriority, string> = {
+  low: "bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300",
+  medium: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  high: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  urgent: "bg-error-50 text-error-700 dark:bg-error-900/30 dark:text-error-400",
+};
+
 export type TransactionWithUser = LedgerTransaction & { users?: { full_name: string } | null };
 
 export function CaseDetailsClient({
@@ -57,11 +67,13 @@ export function CaseDetailsClient({
   caseData,
   initialTransactions,
   currentUser,
+  allUsers = [],
 }: {
   client: ClientWithSummary;
   caseData: CaseWithSummary;
   initialTransactions: TransactionWithUser[];
   currentUser: { id: string; role: string; cash_advance: number; full_name?: string } | null;
+  allUsers?: { id: string; full_name: string; role: string }[];
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -73,6 +85,10 @@ export function CaseDetailsClient({
 
   const userRole = currentUser?.role || null;
   const userId = currentUser?.id;
+  const superadminIds = useMemo(
+    () => new Set(allUsers.filter((u) => u.role === "superadmin").map((u) => u.id)),
+    [allUsers],
+  );
   const [activeTab, setActiveTab] = useState<Tab>("finance");
   const [transactions, setTransactions] = useState<TransactionWithUser[]>(initialTransactions);
   const [modalOpen, setModalOpen] = useState(false);
@@ -89,6 +105,39 @@ export function CaseDetailsClient({
   const [caseStatus] = useState(caseData.status);
   // Lock all transactions if the case is closed OR the client is inactive
   const isLocked = caseStatus === "closed" || client.status === "inactive";
+
+  const canManageAssignment = userRole === "admin" || userRole === "superadmin";
+  const [priority, setPriority] = useState<CasePriority>(caseData.priority);
+  const [assignees, setAssignees] = useState(caseData.assignees);
+  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
+
+  async function updatePriority(next: CasePriority) {
+    const previous = priority;
+    setPriority(next);
+    const { error: updateError } = await supabase.from("cases").update({ priority: next }).eq("id", caseData.id);
+    if (updateError) setPriority(previous);
+  }
+
+  async function addAssignee(assigneeId: string) {
+    if (!userId) return;
+    const user = allUsers.find((u) => u.id === assigneeId);
+    setAssignees((current) => [...current, { id: assigneeId, full_name: user?.full_name ?? "" }]);
+    const { error: insertError } = await supabase
+      .from("case_assignees")
+      .insert({ case_id: caseData.id, user_id: assigneeId, assigned_by: userId });
+    if (insertError) setAssignees((current) => current.filter((a) => a.id !== assigneeId));
+  }
+
+  async function removeAssignee(assigneeId: string) {
+    const previous = assignees;
+    setAssignees((current) => current.filter((a) => a.id !== assigneeId));
+    const { error: deleteError } = await supabase
+      .from("case_assignees")
+      .delete()
+      .eq("case_id", caseData.id)
+      .eq("user_id", assigneeId);
+    if (deleteError) setAssignees(previous);
+  }
 
   // Sync state if server re-fetches (skip deleted IDs to prevent stale restore)
   useEffect(() => {
@@ -318,8 +367,62 @@ export function CaseDetailsClient({
             )}>
               {tCases("status." + caseStatus)}
             </span>
+            {canManageAssignment ? (
+              <select
+                value={priority}
+                onChange={(e) => updatePriority(e.target.value as CasePriority)}
+                className={cn(
+                  "cursor-pointer rounded-full border-0 px-2 py-0.5 text-xs font-medium",
+                  priorityBadgeClasses[priority],
+                )}
+              >
+                {priorityOrder.map((p) => (
+                  <option key={p} value={p}>
+                    {tCases(`priority.${p}`)}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", priorityBadgeClasses[priority])}>
+                {tCases(`priority.${priority}`)}
+              </span>
+            )}
             {caseData.description && <span className="text-ink-400">· {caseData.description}</span>}
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-sm">
+            <span className="text-ink-500 dark:text-ink-400">{tCases("assignedTo")}:</span>
+            {assignees.length === 0 && !canManageAssignment && (
+              <span className="text-ink-400">{tCases("unassigned")}</span>
+            )}
+            {assignees.map((a) => (
+              <span
+                key={a.id}
+                className="inline-flex items-center gap-1 rounded-full bg-ink-100 py-0.5 pe-1 ps-2.5 text-xs font-medium text-ink-700 dark:bg-ink-800 dark:text-ink-300"
+              >
+                {a.full_name}
+                {canManageAssignment && (
+                  <button
+                    type="button"
+                    onClick={() => removeAssignee(a.id)}
+                    className="inline-flex size-4 items-center justify-center rounded-full text-ink-400 hover:bg-ink-200 hover:text-ink-700 dark:hover:bg-ink-700"
+                    aria-label={tCommon("delete")}
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
+              </span>
+            ))}
+            {canManageAssignment && (
+              <button
+                type="button"
+                onClick={() => setAssigneePickerOpen(true)}
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-ink-300 px-2 py-0.5 text-xs font-medium text-ink-500 hover:border-accent-400 hover:text-accent-600 dark:border-ink-600 dark:text-ink-400"
+              >
+                <UserPlus className="size-3" />
+                {tCases("addAssignee")}
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex w-full shrink-0 flex-col-reverse gap-2 sm:w-auto sm:flex-row-reverse">
           <ExportTransactionsButton clientId={client.id} caseId={caseData.id} />
@@ -408,6 +511,7 @@ export function CaseDetailsClient({
           transactions={transactions}
           userRole={userRole}
           currentUserId={userId}
+          superadminIds={superadminIds}
           onEdit={openEditModal}
            onDelete={(id) => setConfirmDelete(id)}
           deleting={deleting}
@@ -584,6 +688,37 @@ export function CaseDetailsClient({
           </div>
         </div>
       </Modal>
+
+      <Modal title={tCases("form.assignees")} open={assigneePickerOpen} onClose={() => setAssigneePickerOpen(false)}>
+        <div className="space-y-4">
+          <div className="max-h-64 overflow-y-auto rounded-md border border-ink-100 dark:border-ink-700">
+            <div className="divide-y divide-ink-50 dark:divide-ink-700">
+              {allUsers
+                .filter((u) => !assignees.some((a) => a.id === u.id))
+                .map((u) => (
+                  <div key={u.id} className="flex items-center justify-between gap-2 p-2.5 hover:bg-ink-50 dark:hover:bg-ink-800">
+                    <span className="text-sm font-medium text-ink-800 dark:text-ink-100">{u.full_name}</span>
+                    <button
+                      type="button"
+                      onClick={() => addAssignee(u.id)}
+                      className="rounded-md px-3 py-1 text-xs font-semibold bg-success-50 text-success-700 hover:bg-success-100 dark:bg-success-900/20 dark:text-success-400"
+                    >
+                      {tCases("addAssignee")}
+                    </button>
+                  </div>
+                ))}
+              {allUsers.filter((u) => !assignees.some((a) => a.id === u.id)).length === 0 && (
+                <p className="p-4 text-center text-sm text-ink-400">{tCases("unassigned")}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <ActionButton onClick={() => setAssigneePickerOpen(false)}>
+              {tCommon("cancel")}
+            </ActionButton>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -618,6 +753,7 @@ function FinanceTab({
   transactions,
   userRole,
   currentUserId,
+  superadminIds,
   onEdit,
   onDelete,
   deleting,
@@ -625,6 +761,7 @@ function FinanceTab({
   transactions: TransactionWithUser[];
   userRole: string | null;
   currentUserId?: string;
+  superadminIds?: Set<string>;
   onEdit: (item: TransactionWithUser) => void;
   onDelete: (id: string) => void;
   deleting: string | null;
@@ -636,6 +773,9 @@ function FinanceTab({
 
   function canModify(item: TransactionWithUser) {
     if (userRole === "superadmin") return true;
+    if (userRole === "admin") {
+      return item.type !== "system" && !superadminIds?.has(item.created_by ?? "");
+    }
     return item.created_by === currentUserId;
   }
 

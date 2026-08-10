@@ -14,6 +14,7 @@
     "payment": "دفعة",
     "expense": "مصروف",
     "office": "مكتب",
+    "profit": "ربح",
     "system": "رسوم شهرية",
     "myFinancials": "حساباتي المالية",
     "cashAdvance": "العهدة المالية",
@@ -21,6 +22,16 @@
     "balance": "الرصيد",
     "by": "بواسطة",
     "detailedExpenses": "تفاصيل المصروفات"
+  },
+  "Notifications": {
+    "title": "الإشعارات",
+    "empty": "لا توجد إشعارات بعد",
+    "markAllRead": "تعليم الكل كمقروء",
+    "clearAll": "مسح",
+    "viewAll": "عرض الكل",
+    "loadMore": "تحميل المزيد",
+    "newTransaction": "{actor} أضاف {type} بمبلغ {amount} لـ {client}",
+    "caseAssigned": "{actor} أسند إليك {case} (أولوية {priority})"
   },
   "Login": {
     "title": "تسجيل الدخول إلى True Legal",
@@ -148,17 +159,44 @@
       "title": "اسم المهمة",
       "description": "الوصف",
       "profitAmount": "قيمة الاتعاب",
+      "priority": "الأولوية",
+      "assignees": "تعيين إلى",
       "saveCase": "حفظ المهمة"
     },
     "status": {
       "open": "مفتوحة",
       "closed": "مغلقة"
     },
+    "priority": {
+      "low": "منخفضة",
+      "medium": "متوسطة",
+      "high": "عالية",
+      "urgent": "عاجلة"
+    },
+    "assignedTo": "مسندة إلى",
+    "unassigned": "غير مسندة",
+    "addAssignee": "إضافة",
     "exportCaseReport": "تصدير تقرير المهمة",
     "exportClientReport": "تصدير تقرير العميل (مفصل بالمهام)",
     "lockedCase": "هذه المهمة مغلقة. لا يمكن إضافة معاملات جديدة.",
     "lockedClient": "هذا العميل غير نشط. لا يمكن إضافة معاملات جديدة.",
     "lockedHint": "يمكنك إعادة فتحها عن طريق تعديل حالة المهمة أو العميل."
+  },
+  "Tasks": {
+    "title": "التكليفات",
+    "empty": "لا توجد تكليفات",
+    "filterPriority": "الأولوية",
+    "filterUser": "مسندة إلى",
+    "allPriorities": "كل الأولويات",
+    "allUsers": "كل المستخدمين",
+    "columns": {
+      "case": "المهمة",
+      "client": "العميل",
+      "priority": "الأولوية",
+      "status": "الحالة",
+      "assignedBy": "بواسطة",
+      "assignedAt": "تاريخ التعيين"
+    }
   },
   "ClientDetails": {
     "overview": "نظرة عامة",

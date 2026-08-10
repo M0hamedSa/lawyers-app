@@ -15,6 +15,7 @@ import type {
   ClientWithSummary,
   CaseWithSummary,
   CaseFile,
+  CasePriority,
   LedgerTransaction,
   VoucherType,
 } from "@/lib/supabase/types";
@@ -32,14 +33,27 @@ type CaseForm = {
   title: string;
   description: string;
   status: string;
+  priority: CasePriority;
   profit_amount: string;
+  assignee_ids: string[];
 };
 
 const emptyCase: CaseForm = {
   title: "",
   description: "",
   status: "open",
+  priority: "medium",
   profit_amount: "",
+  assignee_ids: [],
+};
+
+const priorityOrder: CasePriority[] = ["low", "medium", "high", "urgent"];
+
+const priorityBadgeClasses: Record<CasePriority, string> = {
+  low: "bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300",
+  medium: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  high: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  urgent: "bg-error-50 text-error-700 dark:bg-error-900/30 dark:text-error-400",
 };
 
 type CashFlowPoint = { month: string; payments: number; expenses: number };
@@ -73,6 +87,7 @@ export function ClientDetailsClient({
   userGlobalBalance,
   cashFlowData = [],
   caseBreakdownData = [],
+  allUsers = [],
 }: {
   client: ClientWithSummary;
   initialCases: CaseWithSummary[];
@@ -81,9 +96,14 @@ export function ClientDetailsClient({
   userGlobalBalance?: number;
   cashFlowData?: CashFlowPoint[];
   caseBreakdownData?: CaseBreakdownPoint[];
+  allUsers?: { id: string; full_name: string; role: string }[];
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const superadminIds = useMemo(
+    () => new Set(allUsers.filter((u) => u.role === "superadmin").map((u) => u.id)),
+    [allUsers],
+  );
   const t = useTranslations("ClientDetails");
   const tCases = useTranslations("Cases");
   const tCommon = useTranslations("Common");
@@ -134,6 +154,7 @@ export function ClientDetailsClient({
                       title: next.title as string,
                       description: (next.description as string) ?? null,
                       status: next.status as string,
+                      priority: (next.priority as CasePriority) ?? "medium",
                       profit_amount: next.profit_amount != null ? Number(next.profit_amount) : null,
                       created_by: (next.created_by as string) ?? null,
                       created_at: next.created_at as string,
@@ -141,6 +162,7 @@ export function ClientDetailsClient({
                       total_payments: 0,
                       total_expenses: 0,
                       balance: 0,
+                      assignees: [],
                     },
                     ...current,
                   ],
@@ -276,6 +298,7 @@ export function ClientDetailsClient({
       title: form.title.trim(),
       description: form.description.trim() || null,
       status: form.status,
+      priority: form.priority,
       profit_amount: client.profit_type === "per_case" ? (form.profit_amount ? Number(form.profit_amount) : 0) : 0,
     };
 
@@ -286,17 +309,46 @@ export function ClientDetailsClient({
        result = await supabase.from("cases").insert({ ...payload, created_by: userId }).select().single();
     }
 
-    setSubmitting(false);
-
     if (result.error) {
+      setSubmitting(false);
       setError(result.error.message);
       return;
     }
 
+    const caseId = result.data.id as string;
+
+    if (userRole === "admin" || userRole === "superadmin") {
+      const existingIds = form.id
+        ? cases.find((c) => c.id === form.id)?.assignees.map((a) => a.id) ?? []
+        : [];
+      const toAdd = form.assignee_ids.filter((id) => !existingIds.includes(id));
+      const toRemove = existingIds.filter((id) => !form.assignee_ids.includes(id));
+
+      if (toAdd.length > 0) {
+        await supabase
+          .from("case_assignees")
+          .insert(toAdd.map((uid) => ({ case_id: caseId, user_id: uid, assigned_by: userId })));
+      }
+      if (toRemove.length > 0) {
+        await supabase
+          .from("case_assignees")
+          .delete()
+          .eq("case_id", caseId)
+          .in("user_id", toRemove);
+      }
+    }
+
+    setSubmitting(false);
+
+    const assignees = form.assignee_ids.map((uid) => ({
+      id: uid,
+      full_name: allUsers.find((u) => u.id === uid)?.full_name ?? "",
+    }));
+
     if (form.id) {
       setCases((current) =>
         current.map((c) =>
-          c.id === form.id ? { ...c, ...payload, updated_at: result.data.updated_at } : c
+          c.id === form.id ? { ...c, ...payload, assignees, updated_at: result.data.updated_at } : c
         )
       );
     } else {
@@ -306,6 +358,7 @@ export function ClientDetailsClient({
           total_payments: 0,
           total_expenses: 0,
           balance: 0,
+          assignees,
         },
         ...current,
       ]);
@@ -557,7 +610,9 @@ export function ClientDetailsClient({
             title: c.title,
             description: c.description || "",
             status: c.status,
-            profit_amount: c.profit_amount ? String(c.profit_amount) : ""
+            priority: c.priority,
+            profit_amount: c.profit_amount ? String(c.profit_amount) : "",
+            assignee_ids: c.assignees.map((a) => a.id),
           });
           setModalOpen(true);
         }} onDelete={(id) => setConfirmDelete(id)} deleting={deleting} />
@@ -568,6 +623,7 @@ export function ClientDetailsClient({
             transactions={transactions}
             userRole={userRole}
             currentUserId={currentUser?.id}
+            superadminIds={superadminIds}
             onDelete={(id) => setConfirmDeleteTransaction(id)}
             deleting={deletingTransaction}
           />
@@ -697,16 +753,65 @@ export function ClientDetailsClient({
             />
           </Field>
           
-          <Field label={tCases("columns.status")}>
-            <select
-              className={inputClassName}
-              value={form.status}
-              onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
-            >
-              <option value="open">{tCases("status.open")}</option>
-              <option value="closed">{tCases("status.closed")}</option>
-            </select>
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={tCases("columns.status")}>
+              <select
+                className={inputClassName}
+                value={form.status}
+                onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
+              >
+                <option value="open">{tCases("status.open")}</option>
+                <option value="closed">{tCases("status.closed")}</option>
+              </select>
+            </Field>
+
+            <Field label={tCases("form.priority")}>
+              <select
+                className={inputClassName}
+                value={form.priority}
+                onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as CasePriority }))}
+              >
+                {priorityOrder.map((p) => (
+                  <option key={p} value={p}>
+                    {tCases(`priority.${p}`)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          {(userRole === "admin" || userRole === "superadmin") && (
+            <div className="space-y-2">
+              <label className="text-title-sm text-ink-800 dark:text-ink-100">{tCases("form.assignees")}</label>
+              <div className="max-h-48 overflow-y-auto rounded-md border border-ink-100 dark:border-ink-700">
+                <div className="divide-y divide-ink-50 dark:divide-ink-700">
+                  {allUsers.map((u) => {
+                    const checked = form.assignee_ids.includes(u.id);
+                    return (
+                      <label
+                        key={u.id}
+                        className="flex cursor-pointer items-center justify-between gap-2 p-2.5 hover:bg-ink-50 dark:hover:bg-ink-800"
+                      >
+                        <span className="text-sm font-medium text-ink-800 dark:text-ink-100">{u.full_name}</span>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setForm((current) => ({
+                              ...current,
+                              assignee_ids: checked
+                                ? current.assignee_ids.filter((id) => id !== u.id)
+                                : [...current.assignee_ids, u.id],
+                            }))
+                          }
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <ActionButton type="button" variant="secondary" onClick={() => setModalOpen(false)}>
@@ -998,6 +1103,15 @@ function CasesTab({ cases, userRole, client, currentUserId, onEdit, onDelete, de
                   </span>
                 ),
               },
+              {
+                key: "priority",
+                header: t("form.priority"),
+                cell: (c) => (
+                  <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", priorityBadgeClasses[c.priority])}>
+                    {t(`priority.${c.priority}`)}
+                  </span>
+                ),
+              },
               ...(showProfit ? [{
                 key: "profit_amount",
                 header: tClients("columns.profitDetails"),
@@ -1159,12 +1273,14 @@ function FinanceTab({
   transactions,
   userRole,
   currentUserId,
+  superadminIds,
   onDelete,
   deleting,
 }: {
   transactions: TransactionWithUserAndCase[];
   userRole: string | null;
   currentUserId?: string;
+  superadminIds?: Set<string>;
   onDelete?: (id: string) => void;
   deleting?: string | null;
 }) {
@@ -1177,6 +1293,9 @@ function FinanceTab({
 
   function canModify(item: TransactionWithUserAndCase) {
     if (userRole === "superadmin") return true;
+    if (userRole === "admin") {
+      return item.type !== "system" && !superadminIds?.has(item.created_by ?? "");
+    }
     return item.created_by === currentUserId;
   }
 

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { ClientDetailsClient } from "@/components/clients/client-details-client";
-import { getClient, getCases, getCurrentUser, getUserFinancials, getClientTransactions } from "@/lib/supabase/queries";
+import { getClient, getCases, getCurrentUser, getUserFinancials, getClientTransactions, getAllUsers } from "@/lib/supabase/queries";
 import { decodeId } from "@/lib/id-utils";
 
 export const dynamic = "force-dynamic";
@@ -25,12 +25,13 @@ export default async function ClientDetailsPage({ params }: { params: Promise<{ 
   const id = decodeId(hash);
 
   try {
-    const [client, cases, currentUser, userFinancials, transactions] = await Promise.all([
+    const [client, cases, currentUser, userFinancials, transactions, allUsers] = await Promise.all([
       getClient(id),
       getCases(id),
       getCurrentUser(),
       getUserFinancials(),
       getClientTransactions(id),
+      getAllUsers(),
     ]);
 
     // Build cash flow chart data (last 6 months)
@@ -67,6 +68,7 @@ export default async function ClientDetailsPage({ params }: { params: Promise<{ 
         userGlobalBalance={userFinancials?.balance}
         cashFlowData={cashFlowData}
         caseBreakdownData={caseBreakdownData}
+        allUsers={(allUsers ?? []).map((u) => ({ id: u.id, full_name: u.full_name, role: u.role }))}
       />
     );
   } catch {

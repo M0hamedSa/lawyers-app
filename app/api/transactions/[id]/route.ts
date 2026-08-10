@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+type TransactionAuthRow = {
+  type: string;
+  created_by: string | null;
+  users: { role: string } | null;
+};
+
+function canModifyTransaction(userId: string, role: string | null, transaction: TransactionAuthRow): boolean {
+  if (role === "superadmin") return true;
+  if (role === "admin") {
+    return transaction.type !== "system" && transaction.users?.role !== "superadmin";
+  }
+  return transaction.created_by === userId;
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
@@ -10,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { data: transaction } = await supabase
     .from("transactions")
-    .select("created_by")
+    .select("type, created_by, users!transactions_created_by_fkey(role)")
     .eq("id", id)
     .single();
 
@@ -22,7 +36,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .eq("id", user.id)
     .single();
 
-  if (currentUser?.role !== "superadmin" && transaction.created_by !== user.id) {
+  if (!canModifyTransaction(user.id, currentUser?.role ?? null, transaction as unknown as TransactionAuthRow)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -55,7 +69,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   const { data: transaction } = await supabase
     .from("transactions")
-    .select("created_by")
+    .select("type, created_by, users!transactions_created_by_fkey(role)")
     .eq("id", id)
     .single();
 
@@ -67,7 +81,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     .eq("id", user.id)
     .single();
 
-  if (currentUser?.role !== "superadmin" && transaction.created_by !== user.id) {
+  if (!canModifyTransaction(user.id, currentUser?.role ?? null, transaction as unknown as TransactionAuthRow)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

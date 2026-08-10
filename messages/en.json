@@ -14,6 +14,7 @@
     "payment": "Payment",
     "expense": "Expense",
     "office": "Office",
+    "profit": "Profit",
     "system": "Monthly Fee",
     "myFinancials": "My Financials",
     "cashAdvance": "Cash Advance",
@@ -21,6 +22,16 @@
     "balance": "Balance",
     "by": "By",
     "detailedExpenses": "Detailed Expense Transactions"
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "markAllRead": "Mark all as read",
+    "clearAll": "Clear",
+    "viewAll": "View all",
+    "loadMore": "Load more",
+    "newTransaction": "{actor} added a {type} of {amount} for {client}",
+    "caseAssigned": "{actor} assigned you to {case} ({priority} priority)"
   },
   "Login": {
     "title": "Sign in to True Legal",
@@ -148,17 +159,44 @@
       "title": "Case Title",
       "description": "Description",
       "profitAmount": "Profit Amount",
+      "priority": "Priority",
+      "assignees": "Assign To",
       "saveCase": "Save Case"
     },
     "status": {
       "open": "Open",
       "closed": "Closed"
     },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "assignedTo": "Assigned to",
+    "unassigned": "Unassigned",
+    "addAssignee": "Add",
     "exportCaseReport": "Export Case Report",
     "exportClientReport": "Export Client Report",
     "lockedCase": "This case is closed. No new transactions can be added.",
     "lockedClient": "This client is inactive. No new transactions can be added.",
     "lockedHint": "You can reopen it by editing the case or client status."
+  },
+  "Tasks": {
+    "title": "Tasks",
+    "empty": "No tasks found",
+    "filterPriority": "Priority",
+    "filterUser": "Assigned to",
+    "allPriorities": "All priorities",
+    "allUsers": "All users",
+    "columns": {
+      "case": "Case",
+      "client": "Client",
+      "priority": "Priority",
+      "status": "Status",
+      "assignedBy": "Assigned by",
+      "assignedAt": "Assigned"
+    }
   },
   "ClientDetails": {
     "overview": "Overview",
