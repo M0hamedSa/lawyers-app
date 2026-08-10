@@ -29,8 +29,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main
         className={
           isRtl
-            ? "h-full overflow-y-auto pt-14 px-4 pb-28 sm:px-6 lg:pr-72 lg:pl-8 lg:pb-8 lg:pt-[4.5rem]"
-            : "h-full overflow-y-auto pt-14 px-4 pb-28 sm:px-6 lg:pl-72 lg:pr-8 lg:pb-8 lg:pt-[4.5rem]"
+            ? "h-full overflow-y-auto pt-20 px-4 pb-28 sm:px-6 lg:pr-72 lg:pl-8 lg:pb-8 lg:pt-[4.5rem]"
+            : "h-full overflow-y-auto pt-20 px-4 pb-28 sm:px-6 lg:pl-72 lg:pr-8 lg:pb-8 lg:pt-[4.5rem]"
         }
       >
         <div className="mx-auto max-w-7xl">{children}</div>

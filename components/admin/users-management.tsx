@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { UserRole } from "@/lib/supabase/types";
+import { UserRole, UserStatus } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -17,6 +17,7 @@ type UserWithAccess = {
   id: string;
   full_name: string;
   role: UserRole;
+  status: UserStatus;
   cash_advance: number;
   client_access: { client_id: string }[];
 };
@@ -79,6 +80,27 @@ export function UsersManagement({
         u.id === selectedUser.id ? { ...u, role: newRole } : u
       ));
       setSelectedUser(prev => prev ? { ...prev, role: newRole } : null);
+    }
+    setSubmitting(false);
+    setTogglingId(null);
+  }
+
+  async function toggleStatus() {
+    if (!selectedUser || currentRole !== "superadmin") return;
+
+    const newStatus: UserStatus = selectedUser.status === "closed" ? "active" : "closed";
+    setSubmitting(true);
+    setTogglingId("status");
+    const { error } = await supabase
+      .from("users")
+      .update({ status: newStatus })
+      .eq("id", selectedUser.id);
+
+    if (!error) {
+      setUsers(prev => prev.map(u =>
+        u.id === selectedUser.id ? { ...u, status: newStatus } : u
+      ));
+      setSelectedUser(prev => prev ? { ...prev, status: newStatus } : null);
     }
     setSubmitting(false);
     setTogglingId(null);
@@ -264,6 +286,22 @@ export function UsersManagement({
                 ),
               },
               {
+                key: "status",
+                header: t("status"),
+                cell: (u) => (
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                      u.status === "closed"
+                        ? "bg-error-50 text-error-700 dark:bg-error-900/30 dark:text-error-400"
+                        : "bg-success-50 text-success-700 dark:bg-success-900/30 dark:text-success-400",
+                    )}
+                  >
+                    {u.status === "closed" ? t("statusClosed") : t("statusActive")}
+                  </span>
+                ),
+              },
+              {
                 key: "actions",
                 header: "",
                 className: "text-end",
@@ -323,6 +361,24 @@ export function UsersManagement({
                     ))}
                   </div>
                 )}
+              </div>
+              <div className="space-y-2 border-b border-ink-100 pb-4">
+                <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">{t("accountStatus")}</label>
+                <p className="text-xs text-ink-500 dark:text-ink-400">{t("accountStatusDesc")}</p>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={toggleStatus}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition",
+                    selectedUser?.status === "closed"
+                      ? "border-success-200 bg-success-50 text-success-700 hover:bg-success-100 dark:border-success-900/30 dark:bg-success-900/20 dark:text-success-400"
+                      : "border-error-200 bg-error-50 text-error-700 hover:bg-error-100 dark:border-error-900/30 dark:bg-error-900/20 dark:text-error-400"
+                  )}
+                >
+                  {togglingId === "status" && <Loader2 className="size-3 animate-spin" />}
+                  {selectedUser?.status === "closed" ? t("reopenAccess") : t("closeAccess")}
+                </button>
               </div>
               <div className="space-y-2 border-b border-ink-100 pb-4">
                 <label className="text-sm font-semibold text-ink-800 dark:text-ink-100">{tCommon("cashAdvance")} ({locale === "ar" ? "ج.م." : "EGP"})</label>

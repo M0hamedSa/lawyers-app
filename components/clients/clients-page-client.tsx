@@ -58,6 +58,9 @@ export function ClientsPageClient({
       .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
         router.refresh();
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "cases" }, () => {
+        router.refresh();
+      })
       .subscribe();
 
     return () => {
@@ -183,7 +186,7 @@ export function ClientsPageClient({
             {t("heading")}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ExportClientsButton />
           {(userRole === "admin" || userRole === "superadmin") && (
             <ActionButton className="w-full shrink-0 sm:w-auto" onClick={openCreate}>

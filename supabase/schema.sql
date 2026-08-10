@@ -49,6 +49,7 @@ create table if not exists public.users (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
   role public.user_role not null default 'user',
+  status text not null default 'active' check (status in ('active', 'closed')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -553,7 +554,7 @@ security definer
 as $$
 begin
   insert into public.client_access (user_id, client_id)
-  select id, new.id from public.users
+  select id, new.id from public.users where status = 'active'
   on conflict do nothing;
   return new;
 end;

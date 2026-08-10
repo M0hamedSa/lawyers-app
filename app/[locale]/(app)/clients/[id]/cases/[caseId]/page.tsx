@@ -43,7 +43,9 @@ export default async function CaseDetailsPage({ params }: { params: Promise<{ id
       caseData={caseData}
       initialTransactions={transactions}
       currentUser={currentUser}
-      allUsers={(allUsers ?? []).map((u) => ({ id: u.id, full_name: u.full_name, role: u.role }))}
+      allUsers={(allUsers ?? [])
+        .filter((u) => u.status !== "closed")
+        .map((u) => ({ id: u.id, full_name: u.full_name, role: u.role }))}
     />;
   } catch {
     notFound();

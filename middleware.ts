@@ -75,6 +75,27 @@ export async function middleware(request: NextRequest) {
   )?.[1];
   const authCookieName = supabaseRef ? `sb-${supabaseRef}-auth-token` : null;
 
+  // ── Closed accounts ──────────────────────────────────────────────────────
+  // A closed user keeps all their historical data everywhere else in the app,
+  // but loses access immediately — even mid-session — the moment an admin
+  // closes them, not just on their next login attempt.
+  if (user && !path.includes('/login')) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('status')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profile?.status === 'closed') {
+      const locale = path.startsWith('/ar') ? 'ar' : 'en';
+      const redirect = NextResponse.redirect(new URL(`/${locale}/login`, request.url));
+      if (authCookieName) {
+        redirect.cookies.set(authCookieName, '', { path: '/', maxAge: 0 });
+      }
+      return redirect;
+    }
+  }
+
   // ── Password reset flow ──────────────────────────────────────────────────
 
   const PASSWORD_RESET_TTL = 120; // seconds

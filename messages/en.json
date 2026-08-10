@@ -42,6 +42,7 @@
     "password": "Password",
     "submit": "Sign in",
     "error": "Invalid email or password",
+    "accountClosed": "This account has been closed. Contact an administrator for access.",
     "forgotPassword": "Forgot password?"
   },
   "ForgotPassword": {
@@ -338,7 +339,14 @@
     "updatePassword": "Update Password",
     "passwordUpdated": "Password updated successfully!",
     "noUsers": "No users found.",
-    "lockoutWarning": "Superadmins cannot change their own role to prevent accidental lockout."
+    "lockoutWarning": "Superadmins cannot change their own role to prevent accidental lockout.",
+    "status": "Status",
+    "statusActive": "Active",
+    "statusClosed": "Closed",
+    "accountStatus": "Account Status",
+    "accountStatusDesc": "Closing access blocks this user's login immediately and hides them from case assignment and new client access, but keeps all of their existing data everywhere else.",
+    "closeAccess": "Close Access",
+    "reopenAccess": "Reopen Access"
   },
   "Roles": {
     "superadmin": "Super Admin",

@@ -1,4 +1,5 @@
 export type UserRole = "superadmin" | "admin" | "user";
+export type UserStatus = "active" | "closed";
 export type TransactionType = "payment" | "expense" | "profit" | "office" | "system";
 export type VoucherType = "cash" | "bank_transfer" | "receipt" | "card" | "other";
 export type ProfitType = "monthly" | "per_case";
@@ -154,6 +155,7 @@ export type Database = {
           id: string;
           full_name: string;
           role: UserRole;
+          status: UserStatus;
           cash_advance: number;
           created_at: string;
           updated_at: string;
@@ -162,11 +164,13 @@ export type Database = {
           id: string;
           full_name: string;
           role?: UserRole;
+          status?: UserStatus;
           cash_advance?: number;
         };
         Update: {
           full_name?: string;
           role?: UserRole;
+          status?: UserStatus;
           cash_advance?: number;
         };
         Relationships: [];

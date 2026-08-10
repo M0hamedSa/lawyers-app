@@ -68,7 +68,9 @@ export default async function ClientDetailsPage({ params }: { params: Promise<{ 
         userGlobalBalance={userFinancials?.balance}
         cashFlowData={cashFlowData}
         caseBreakdownData={caseBreakdownData}
-        allUsers={(allUsers ?? []).map((u) => ({ id: u.id, full_name: u.full_name, role: u.role }))}
+        allUsers={(allUsers ?? [])
+          .filter((u) => u.status !== "closed")
+          .map((u) => ({ id: u.id, full_name: u.full_name, role: u.role }))}
       />
     );
   } catch {

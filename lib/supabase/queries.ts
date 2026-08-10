@@ -16,7 +16,13 @@ type ClientRow = {
   updated_at: string;
   transactions: { amount: number; type: "payment" | "expense" | "profit" | "office" | "system"; created_by?: string; is_cleared?: boolean }[];
   creator?: { full_name: string } | null;
+  cases?: { updated_at: string }[];
 };
+
+function lastActivityAt(client: ClientRow): number {
+  const caseTimestamps = (client.cases ?? []).map((c) => new Date(c.updated_at).getTime());
+  return Math.max(new Date(client.updated_at).getTime(), ...caseTimestamps);
+}
 
 export type CaseRow = {
   id: string;
@@ -112,11 +118,14 @@ export async function getClients() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
-    .select("*, creator:users!clients_created_by_fkey(full_name), transactions(amount, type, created_by, is_cleared)")
-    .order("created_at", { ascending: false });
+    .select("*, creator:users!clients_created_by_fkey(full_name), transactions(amount, type, created_by, is_cleared), cases(updated_at)");
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((client) => withSummary(client as ClientRow, currentUser));
+
+  const rows = (data ?? []) as ClientRow[];
+  rows.sort((a, b) => lastActivityAt(b) - lastActivityAt(a));
+
+  return rows.map((client) => withSummary(client, currentUser));
 }
 
 export async function getClient(id: string) {
@@ -365,11 +374,11 @@ export async function getCurrentUser() {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, role, full_name")
+    .select("id, role, full_name, status")
     .eq("id", user.id)
     .single();
 
-  if (error) return null;
+  if (error || data.status === "closed") return null;
 
   const { data: advances } = await supabase
     .from("cash_advances")

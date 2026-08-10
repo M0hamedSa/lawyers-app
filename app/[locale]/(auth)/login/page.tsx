@@ -26,7 +26,7 @@ export default function LoginPage() {
     const result = await signInAction(formData);
     
     if (result.error) {
-      setError(t("error"));
+      setError(result.error === "account_closed" ? t("accountClosed") : t("error"));
       setPending(false);
     } else if (result.success) {
       router.push("/dashboard");
