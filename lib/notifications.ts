@@ -2,6 +2,7 @@ import { formatCurrency } from "@/lib/utils";
 import type { AppNotification, CasePriority } from "@/lib/supabase/types";
 
 export function notificationHref(n: AppNotification) {
+  if (n.type === "cash_advance_added" || n.type === "cash_advance_deleted") return "/dashboard";
   if (!n.client_id) return null;
   return n.case_id ? `/clients/${n.client_id}/cases/${n.case_id}` : `/clients/${n.client_id}`;
 }
@@ -22,6 +23,18 @@ export function notificationMessage(
       priority: n.priority ? tPriority(n.priority) : "",
     });
   }
+  if (n.type === "cash_advance_added") {
+    return t("cashAdvanceAdded", {
+      actor: n.actor_name,
+      amount: n.amount != null ? formatCurrency(n.amount, locale) : "",
+    });
+  }
+  if (n.type === "cash_advance_deleted") {
+    return t("cashAdvanceDeleted", {
+      actor: n.actor_name,
+      amount: n.amount != null ? formatCurrency(n.amount, locale) : "",
+    });
+  }
   return t("newTransaction", {
     actor: n.actor_name,
     type: n.transaction_type ? tCommon(n.transaction_type) : "",
@@ -29,3 +42,4 @@ export function notificationMessage(
     client: n.client_name ?? "",
   });
 }
+

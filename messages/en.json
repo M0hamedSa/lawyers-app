@@ -33,7 +33,9 @@
     "nextPage": "Next",
     "pageLabel": "Page {page}",
     "newTransaction": "{actor} added a {type} of {amount} for {client}",
-    "caseAssigned": "{actor} assigned you to {case} ({priority} priority)"
+    "caseAssigned": "{actor} assigned you to {case} ({priority} priority)",
+    "cashAdvanceAdded": "{actor} added a cash advance of {amount} to your account",
+    "cashAdvanceDeleted": "{actor} deleted a cash advance of {amount} from your account"
   },
   "Login": {
     "title": "Sign in to True Legal",
@@ -267,6 +269,7 @@
     "clearFilters": "Clear filters",
     "noResults": "No transactions match your search.",
     "allTypes": "All Types",
+    "profit": "Profit",
     "allCaseStatuses": "All Cases",
     "openCases": "Open Cases",
     "closedCases": "Closed Cases"

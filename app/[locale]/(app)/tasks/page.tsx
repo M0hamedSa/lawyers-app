@@ -45,7 +45,9 @@ export default async function TasksPage({
       <TasksPageClient
         tasks={tasks}
         isManager={isManager}
-        users={(allUsers ?? []).map((u) => ({ id: u.id, full_name: u.full_name }))}
+        users={(allUsers ?? [])
+          .filter((u) => u.status !== "closed")
+          .map((u) => ({ id: u.id, full_name: u.full_name }))}
       />
     </div>
   );

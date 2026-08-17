@@ -777,7 +777,7 @@ function FinanceTab({
   function canModify(item: TransactionWithUser) {
     if (userRole === "superadmin") return true;
     if (userRole === "admin") {
-      return item.type !== "system" && !superadminIds?.has(item.created_by ?? "");
+      return item.type !== "profit" && !superadminIds?.has(item.created_by ?? "");
     }
     return item.created_by === currentUserId;
   }
@@ -831,7 +831,7 @@ function FinanceTab({
                   <span
                     className={cn(
                       "inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-[10px] sm:text-xs font-semibold capitalize",
-                      item.type === "payment" || item.type === "system"
+                      item.type === "payment"
                         ? "bg-success-50 text-success-800 dark:bg-success-950/50 dark:text-success-300"
                         : "bg-error-50 text-error-800 dark:bg-error-950/50 dark:text-error-300",
                     )}
@@ -863,17 +863,26 @@ function FinanceTab({
             {
               key: "amount",
               header: tTrans("columns.amount"),
-              cell: (item) => (
-                <span
-                  className={cn(
-                    "font-semibold tabular-nums",
-                    item.type === "payment" || item.type === "system" ? "text-success-700 dark:text-success-400" : "text-error-700 dark:text-error-400",
-                  )}
-                >
-                  {item.type === "payment" || item.type === "system" ? "+" : "-"}
-                  {formatCurrency(item.amount, locale)}
-                </span>
-              ),
+              cell: (item) => {
+                const isProfit = item.type === "profit";
+                const isPayment = item.type === "payment";
+                const isPositive = isPayment || isProfit;
+                return (
+                  <span
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      isProfit
+                        ? "text-blue-700 dark:text-blue-400"
+                        : isPayment
+                          ? "text-success-700 dark:text-success-400"
+                          : "text-error-700 dark:text-error-400",
+                    )}
+                  >
+                    {isPositive ? "+" : "-"}
+                    {formatCurrency(item.amount, locale)}
+                  </span>
+                );
+              },
             },
             {
               key: "created_by",

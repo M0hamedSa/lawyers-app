@@ -1,6 +1,6 @@
 export type UserRole = "superadmin" | "admin" | "user";
 export type UserStatus = "active" | "closed";
-export type TransactionType = "payment" | "expense" | "profit" | "office" | "system";
+export type TransactionType = "payment" | "expense" | "profit" | "office";
 export type VoucherType = "cash" | "bank_transfer" | "receipt" | "card" | "other";
 export type ProfitType = "monthly" | "per_case";
 export type CasePriority = "low" | "medium" | "high" | "urgent";

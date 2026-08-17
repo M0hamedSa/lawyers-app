@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     .filter((client) => client.profit && client.profit > 0)
     .map((client) => ({
       client_id: client.id,
-      type: "system" as const, 
+      type: "profit" as const, 
       amount: client.profit!,
       description: "Monthly Profit",
       voucher_type: "other" as const,

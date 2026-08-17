@@ -13,7 +13,7 @@ import { Trash2, Loader2 } from "lucide-react";
 type Transaction = {
   id: string;
   date: string;
-  type: "payment" | "expense" | "profit" | "office" | "system";
+  type: "payment" | "expense" | "profit" | "office";
   amount: number;
   description: string;
   client_id: string;
@@ -148,7 +148,7 @@ export function TransactionsTable({
                   <span
                     className={cn(
                       "inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold capitalize",
-                      t.type === "payment" || t.type === "system"
+                      t.type === "payment"
                         ? "bg-success-50 text-success-800 dark:bg-success-950/50 dark:text-success-300"
                         : "bg-error-50 text-error-800 dark:bg-error-950/50 dark:text-error-300",
                     )}

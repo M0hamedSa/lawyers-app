@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       dbQuery = dbQuery.lte('date', dateTo);
       metricsQuery = metricsQuery.lte('date', dateTo);
     }
-    if (type === 'payment' || type === 'expense' || type === 'office') {
+    if (type === 'payment' || type === 'expense' || type === 'office' || type === 'profit') {
       dbQuery = dbQuery.eq('type', type);
     }
 
@@ -427,11 +427,11 @@ export async function GET(request: Request) {
                 <td>${new Date(t_row.date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                 ${!clientId ? `<td>${escapeHtml(t_row.clients?.name || '')}</td>` : ''}
                 ${!caseId ? `<td>${escapeHtml(t_row.cases?.title || '-')}</td>` : ''}
-                <td>${t_row.type === 'profit' ? (locale === 'ar' ? 'اتعاب' : 'Profit') : t_row.type === 'system' ? t('Common.system') : t_row.type === 'payment' ? t('Common.payment') : t_row.type === 'office' ? t('Common.office') : t('Common.expense')}</td>
+                <td>${t_row.type === 'profit' ? (locale === 'ar' ? 'اتعاب' : 'Profit') : t_row.type === 'payment' ? t('Common.payment') : t_row.type === 'office' ? t('Common.office') : t('Common.expense')}</td>
                 <td>${t_row.voucher_type ? t('Transaction.vouchers.' + t_row.voucher_type) : ''}</td>
                 <td>${escapeHtml(t_row.description)}</td>
-                <td class="amount-cell ${t_row.type === 'profit' ? 'profit' : (t_row.type === 'payment' || t_row.type === 'system' ? 'payment' : 'expense')}">
-                  ${t_row.type === 'profit' || t_row.type === 'payment' || t_row.type === 'system' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
+                <td class="amount-cell ${t_row.type === 'profit' ? 'profit' : (t_row.type === 'payment' ? 'payment' : 'expense')}">
+                  ${t_row.type === 'profit' || t_row.type === 'payment' ? '+' : '-'}${Number(t_row.amount).toLocaleString(locale, { style: 'currency', currency: 'EGP' })}
                 </td>
                 <td>${escapeHtml(t_row.users?.full_name || (t_row.type === 'profit' ? (locale === 'ar' ? 'النظام' : 'System') : '-'))}</td>
               </tr>

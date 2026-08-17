@@ -443,7 +443,7 @@ using (
       select 1 from public.users u
       where u.id = auth.uid() and u.role = 'admin'
     )
-    and type != 'system'
+    and type != 'profit'
     and not exists (
       select 1 from public.users creator
       where creator.id = transactions.created_by and creator.role = 'superadmin'
@@ -461,7 +461,7 @@ with check (
       select 1 from public.users u
       where u.id = auth.uid() and u.role = 'admin'
     )
-    and type != 'system'
+    and type != 'profit'
     and not exists (
       select 1 from public.users creator
       where creator.id = transactions.created_by and creator.role = 'superadmin'
@@ -494,7 +494,7 @@ using (
       select 1 from public.users u
       where u.id = auth.uid() and u.role = 'admin'
     )
-    and type != 'system'
+    and type != 'profit'
     and not exists (
       select 1 from public.users creator
       where creator.id = transactions.created_by and creator.role = 'superadmin'
@@ -794,3 +794,82 @@ drop trigger if exists trg_notify_case_assignment on public.case_assignees;
 create trigger trg_notify_case_assignment
 after insert on public.case_assignees
 for each row execute function public.notify_case_assignment();
+
+-- -----------------------------------------------------------------------
+-- Cash Advance notifications
+-- -----------------------------------------------------------------------
+create or replace function public.notify_user_of_cash_advance()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_actor_name text;
+begin
+  if new.user_id is distinct from new.created_by then
+    select full_name into v_actor_name from public.users where id = new.created_by;
+
+    insert into public.notifications (
+      user_id,
+      actor_id,
+      actor_name,
+      type,
+      amount
+    )
+    values (
+      new.user_id,
+      new.created_by,
+      coalesce(v_actor_name, 'Superadmin'),
+      'cash_advance_added',
+      new.amount
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_notify_user_of_cash_advance on public.cash_advances;
+create trigger trg_notify_user_of_cash_advance
+after insert on public.cash_advances
+for each row execute function public.notify_user_of_cash_advance();
+
+create or replace function public.notify_user_of_cash_advance_deletion()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_actor_name text;
+  v_actor_id uuid;
+begin
+  v_actor_id := auth.uid();
+  if v_actor_id is not null then
+    select full_name into v_actor_name from public.users where id = v_actor_id;
+  end if;
+
+  if old.user_id is distinct from v_actor_id then
+    insert into public.notifications (
+      user_id,
+      actor_id,
+      actor_name,
+      type,
+      amount
+    )
+    values (
+      old.user_id,
+      v_actor_id,
+      coalesce(v_actor_name, 'Superadmin'),
+      'cash_advance_deleted',
+      old.amount
+    );
+  end if;
+  return old;
+end;
+$$;
+
+drop trigger if exists trg_notify_user_of_cash_advance_deletion on public.cash_advances;
+create trigger trg_notify_user_of_cash_advance_deletion
+before delete on public.cash_advances
+for each row execute function public.notify_user_of_cash_advance_deletion();
+
+

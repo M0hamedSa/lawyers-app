@@ -236,17 +236,21 @@ export function ClientDetailsClient({
         }
       }
       
-      if (t.type === "payment" && !t.is_cleared) acc.payments += Number(t.amount);
-      if (t.type === "expense") acc.expenses += Number(t.amount);
+      if (t.type === "profit") {
+        acc.profit += Number(t.amount);
+      } else {
+        if (t.type === "payment" && !t.is_cleared) acc.payments += Number(t.amount);
+        if (t.type === "expense") acc.expenses += Number(t.amount);
+      }
       return acc;
     },
-    { payments: 0, expenses: 0 }
+    { payments: 0, expenses: 0, profit: 0 }
   );
 
   const totals = {
     payments: txTotals.payments,
     expenses: txTotals.expenses,
-    profit: caseTotals.profit,
+    profit: client.profit_type === "monthly" ? txTotals.profit : caseTotals.profit,
   };
 
   let balance = 0;
@@ -435,7 +439,7 @@ export function ClientDetailsClient({
       .insert({
         client_id: client.id,
         case_id: null,
-        type: client.profit_type === "monthly" ? "system" : "payment",
+        type: "payment",
         amount,
         description: paymentForm.description.trim(),
         voucher_type: paymentForm.voucher_type,
@@ -529,15 +533,15 @@ export function ClientDetailsClient({
           <>
             <FinanceMetric
               label={t("totalProfit") || "Total Profit"}
-              value={formatCurrency(client.total_profit, locale)}
-              rawValue={client.total_profit}
+              value={formatCurrency(totals.profit, locale)}
+              rawValue={totals.profit}
               tone="payment"
               locale={locale}
             />
             <FinanceMetric
               label={locale === "ar" ? "صافي الحساب" : "Net Balance"}
-              value={formatCurrency(balance - client.total_profit, locale)}
-              rawValue={balance - client.total_profit}
+              value={formatCurrency(balance - totals.profit, locale)}
+              rawValue={balance - totals.profit}
               tone="balance"
               locale={locale}
             />
@@ -1322,7 +1326,7 @@ function FinanceTab({
   function canModify(item: TransactionWithUserAndCase) {
     if (userRole === "superadmin") return true;
     if (userRole === "admin") {
-      return item.type !== "system" && !superadminIds?.has(item.created_by ?? "");
+      return item.type !== "profit" && !superadminIds?.has(item.created_by ?? "");
     }
     return item.created_by === currentUserId;
   }
@@ -1381,7 +1385,7 @@ function FinanceTab({
                   <span
                     className={cn(
                       "inline-flex items-center justify-center whitespace-nowrap rounded-md px-2 py-1 text-[10px] sm:text-xs font-semibold capitalize",
-                      item.type === "payment" || item.type === "system"
+                      item.type === "payment"
                         ? "bg-success-50 text-success-800 dark:bg-success-950/50 dark:text-success-300"
                         : "bg-error-50 text-error-800 dark:bg-error-950/50 dark:text-error-300",
                     )}
@@ -1413,24 +1417,33 @@ function FinanceTab({
             {
               key: "amount",
               header: tTrans("columns.amount"),
-              cell: (item) => (
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "font-semibold tabular-nums",
-                      item.type === "payment" || item.type === "system" ? "text-success-700 dark:text-success-400" : "text-error-700 dark:text-error-400",
-                    )}
-                  >
-                    {item.type === "payment" || item.type === "system" ? "+" : "-"}
-                    {formatCurrency(item.amount, locale)}
-                  </span>
-                  {item.is_cleared && (
-                    <span className="inline-flex rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-medium text-ink-600 dark:bg-ink-800 dark:text-ink-300">
-                      {tClients("cleared") || "Cleared"}
+              cell: (item) => {
+                const isProfit = item.type === "profit";
+                const isPayment = item.type === "payment";
+                const isPositive = isPayment || isProfit;
+                return (
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        isProfit
+                          ? "text-blue-700 dark:text-blue-400"
+                          : isPayment
+                            ? "text-success-700 dark:text-success-400"
+                            : "text-error-700 dark:text-error-400",
+                      )}
+                    >
+                      {isPositive ? "+" : "-"}
+                      {formatCurrency(item.amount, locale)}
                     </span>
-                  )}
-                </div>
-              ),
+                    {item.is_cleared && (
+                      <span className="inline-flex rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-medium text-ink-600 dark:bg-ink-800 dark:text-ink-300">
+                        {tClients("cleared") || "Cleared"}
+                      </span>
+                    )}
+                  </div>
+                );
+              },
             },
             {
               key: "created_by",

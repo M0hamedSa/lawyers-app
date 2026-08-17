@@ -33,7 +33,9 @@
     "nextPage": "التالي",
     "pageLabel": "صفحة {page}",
     "newTransaction": "{actor} أضاف {type} بمبلغ {amount} لـ {client}",
-    "caseAssigned": "{actor} أسند إليك {case} (أولوية {priority})"
+    "caseAssigned": "{actor} أسند إليك {case} (أولوية {priority})",
+    "cashAdvanceAdded": "{actor} أضاف عهدة مالية بمبلغ {amount} لحسابك",
+    "cashAdvanceDeleted": "{actor} قام بحذف عهدة مالية بمبلغ {amount} من حسابك"
   },
   "Login": {
     "title": "تسجيل الدخول إلى True Legal",
@@ -267,6 +269,7 @@
     "clearFilters": "مسح الفلاتر",
     "noResults": "لا توجد معاملات تطابق بحثك.",
     "allTypes": "جميع الأنواع",
+    "profit": "اتعاب",
     "allCaseStatuses": "جميع المهام",
     "openCases": "المهام المفتوحة",
     "closedCases": "المهام المغلقة"

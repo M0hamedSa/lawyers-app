@@ -10,7 +10,7 @@ type TransactionAuthRow = {
 function canModifyTransaction(userId: string, role: string | null, transaction: TransactionAuthRow): boolean {
   if (role === "superadmin") return true;
   if (role === "admin") {
-    return transaction.type !== "system" && transaction.users?.role !== "superadmin";
+    return transaction.type !== "profit" && transaction.users?.role !== "superadmin";
   }
   return transaction.created_by === userId;
 }

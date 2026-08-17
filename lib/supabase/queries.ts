@@ -14,7 +14,7 @@ type ClientRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  transactions: { amount: number; type: "payment" | "expense" | "profit" | "office" | "system"; created_by?: string; is_cleared?: boolean }[];
+  transactions: { amount: number; type: "payment" | "expense" | "profit" | "office"; created_by?: string; is_cleared?: boolean }[];
   creator?: { full_name: string } | null;
   cases?: { updated_at: string }[];
 };
@@ -48,7 +48,7 @@ function withSummary(client: ClientRow, currentUser: SummaryUser | null = null):
       if (currentUser && currentUser.role !== "superadmin" && transaction.created_by !== currentUser.id) {
         return acc;
       }
-      if (transaction.type === "profit" || transaction.type === "system") {
+      if (transaction.type === "profit") {
         acc.total_profit += Number(transaction.amount);
       } else {
         if (transaction.type === "payment" && !transaction.is_cleared) acc.total_payments += Number(transaction.amount);

@@ -121,6 +121,8 @@ export function TransactionSearch({
         <option value="">{t("allTypes")}</option>
         <option value="payment">{tCommon("payment")}</option>
         <option value="expense">{tCommon("expense")}</option>
+        <option value="office">{tCommon("office")}</option>
+        <option value="profit">{t("profit") || "Profit"}</option>
       </select>
 
       {/* Client */}

@@ -69,18 +69,21 @@ export default async function AdminCashAdvancePage({
   }, {} as Record<string, number>);
 
   // Build the unified user data array, excluding superadmins
-  const usersWithFinancials = filteredUsers.map(u => {
-    const totalExpenses = userExpenses[u.id] || 0;
-    const cashAdvance = userAdvances[u.id] || 0;
-    return {
-      id: u.id,
-      full_name: u.full_name,
-      role: u.role,
-      cash_advance: cashAdvance,
-      total_expenses: totalExpenses,
-      balance: cashAdvance - totalExpenses
-    };
-  });
+  // Show active users and any closed users who still have financial records (advances or expenses)
+  const usersWithFinancials = filteredUsers
+    .filter(u => u.status !== "closed" || (userAdvances[u.id] || 0) > 0 || (userExpenses[u.id] || 0) > 0)
+    .map(u => {
+      const totalExpenses = userExpenses[u.id] || 0;
+      const cashAdvance = userAdvances[u.id] || 0;
+      return {
+        id: u.id,
+        full_name: u.full_name,
+        role: u.role,
+        cash_advance: cashAdvance,
+        total_expenses: totalExpenses,
+        balance: cashAdvance - totalExpenses
+      };
+    });
 
   const tCashAdvance = await getTranslations("CashAdvance");
 
@@ -94,7 +97,7 @@ export default async function AdminCashAdvancePage({
       <CashAdvanceManagement 
         initialUsers={usersWithFinancials}
         initialAdvances={cashAdvances}
-        teamMembers={filteredUsers.map(u => ({ id: u.id, full_name: u.full_name }))}
+        teamMembers={filteredUsers.filter(u => u.status !== "closed").map(u => ({ id: u.id, full_name: u.full_name }))}
       />
     </div>
   );

@@ -56,7 +56,7 @@ export default async function AdminTransactionsPage({
   if (case_status === "open") dbQuery = dbQuery.not("case_id", "is", null);
   if (dateFrom) dbQuery = dbQuery.gte("date", dateFrom);
   if (dateTo) dbQuery = dbQuery.lte("date", dateTo);
-  if (type === "payment" || type === "expense" || type === "office") {
+  if (type === "payment" || type === "expense" || type === "office" || type === "profit") {
     dbQuery = dbQuery.eq("type", type);
   }
 

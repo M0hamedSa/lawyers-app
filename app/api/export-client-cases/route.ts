@@ -85,9 +85,12 @@ export async function GET(request: Request) {
     
     const balance = displayPayments - displayExpenses;
 
+    const txProfit = transactions
+      .filter(t => t.type === 'profit')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
     const totalProfit = client.profit_type === 'per_case'
       ? cases.reduce((sum, c) => sum + (Number(c.profit_amount) || 0), 0)
-      : client.total_profit;
+      : (txProfit || client.total_profit);
 
     const htmlContent = `
       <!DOCTYPE html>
