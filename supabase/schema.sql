@@ -805,11 +805,10 @@ begin
     );
   end if;
 
-  -- 2. Notify admins and superadmins (excluding the assigner and the assigned user)
+  -- 2. Notify admins and superadmins (excluding the assigned user, including the assigner)
   for recipient in
     select id from public.users
     where role in ('admin', 'superadmin')
-      and (new.assigned_by is null or id is distinct from new.assigned_by)
       and id is distinct from new.user_id
   loop
     insert into public.notifications (
@@ -852,6 +851,7 @@ begin
       user_id,
       actor_id,
       actor_name,
+      target_name,
       type,
       amount
     )
@@ -859,16 +859,16 @@ begin
       new.user_id,
       new.created_by,
       coalesce(v_actor_name, 'Superadmin'),
+      null,
       'cash_advance_added',
       new.amount
     );
   end if;
 
-  -- 2. Notify admins and superadmins (excluding the creator and the recipient)
+  -- 2. Notify admins and superadmins (excluding the recipient, including the creator)
   for recipient in
     select id from public.users
     where role in ('admin', 'superadmin')
-      and (new.created_by is null or id is distinct from new.created_by)
       and id is distinct from new.user_id
   loop
     insert into public.notifications (
@@ -915,12 +915,13 @@ begin
   end if;
   select full_name into v_target_name from public.users where id = old.user_id;
 
-  -- 1. Notify the affected user
+  -- 1. Notify the affected user (if not self-deleted)
   if old.user_id is distinct from v_actor_id then
     insert into public.notifications (
       user_id,
       actor_id,
       actor_name,
+      target_name,
       type,
       amount
     )
@@ -928,16 +929,16 @@ begin
       old.user_id,
       v_actor_id,
       coalesce(v_actor_name, 'Superadmin'),
+      null,
       'cash_advance_deleted',
       old.amount
     );
   end if;
 
-  -- 2. Notify admins and superadmins (excluding the actor and the affected user)
+  -- 2. Notify admins and superadmins (excluding the affected user, including the actor)
   for recipient in
     select id from public.users
     where role in ('admin', 'superadmin')
-      and (v_actor_id is null or id is distinct from v_actor_id)
       and id is distinct from old.user_id
   loop
     insert into public.notifications (
@@ -966,6 +967,8 @@ drop trigger if exists trg_notify_user_of_cash_advance_deletion on public.cash_a
 create trigger trg_notify_user_of_cash_advance_deletion
 before delete on public.cash_advances
 for each row execute function public.notify_user_of_cash_advance_deletion();
+
+alter table public.notifications replica identity full;
 
 
 

@@ -3,7 +3,7 @@ import type { AppNotification, CasePriority } from "@/lib/supabase/types";
 
 export function notificationHref(n: AppNotification) {
   if (n.type === "cash_advance_added" || n.type === "cash_advance_deleted") {
-    return n.target_name ? "/admin/cash-advance" : "/dashboard";
+    return n.target_name || (n.actor_id && n.actor_id === n.user_id) ? "/admin/cash-advance" : "/dashboard";
   }
   if (!n.client_id) return null;
   return n.case_id ? `/clients/${n.client_id}/cases/${n.case_id}` : `/clients/${n.client_id}`;
@@ -18,11 +18,14 @@ export function notificationMessage(
   tCommon: Translate,
   tPriority: (p: CasePriority) => string,
 ) {
+  const isOther = Boolean(n.target_name) || Boolean(n.actor_id && n.actor_id === n.user_id);
+  const target = n.target_name || tCommon("user");
+
   if (n.type === "case_assigned") {
-    if (n.target_name) {
+    if (isOther) {
       return t("caseAssignedOther", {
         actor: n.actor_name,
-        target: n.target_name,
+        target,
         case: n.case_title ?? "",
         priority: n.priority ? tPriority(n.priority) : "",
       });
@@ -34,10 +37,10 @@ export function notificationMessage(
     });
   }
   if (n.type === "cash_advance_added") {
-    if (n.target_name) {
+    if (isOther) {
       return t("cashAdvanceAddedOther", {
         actor: n.actor_name,
-        target: n.target_name,
+        target,
         amount: n.amount != null ? formatCurrency(n.amount, locale) : "",
       });
     }
@@ -47,10 +50,10 @@ export function notificationMessage(
     });
   }
   if (n.type === "cash_advance_deleted") {
-    if (n.target_name) {
+    if (isOther) {
       return t("cashAdvanceDeletedOther", {
         actor: n.actor_name,
-        target: n.target_name,
+        target,
         amount: n.amount != null ? formatCurrency(n.amount, locale) : "",
       });
     }

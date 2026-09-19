@@ -36,7 +36,7 @@
     "caseAssigned": "{actor} assigned you to {case} ({priority} priority)",
     "caseAssignedOther": "{actor} assigned {target} to {case} ({priority} priority)",
     "cashAdvanceAdded": "{actor} added a cash advance of {amount} to your account",
-    "cashAdvanceAddedOther": "{actor} added a cash advance of {amount} for {target}",
+    "cashAdvanceAddedOther": "{actor} added a cash advance of {amount} to {target}",
     "cashAdvanceDeleted": "{actor} deleted a cash advance of {amount} from your account",
     "cashAdvanceDeletedOther": "{actor} deleted a cash advance of {amount} for {target}"
   },
