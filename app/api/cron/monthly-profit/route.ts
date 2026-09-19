@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       type: "profit" as const, 
       amount: client.profit!,
       description: "Monthly Profit",
-      voucher_type: "other" as const,
+      voucher_type: "online_pay" as const,
     }));
 
   if (transactionsToInsert.length === 0) {

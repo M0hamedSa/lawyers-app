@@ -33,7 +33,7 @@ end $$;
 
 do $$
 begin
-  create type public.voucher_type as enum ('cash', 'bank_transfer', 'receipt', 'card', 'other');
+  create type public.voucher_type as enum ('cash', 'bank_transfer', 'receipt', 'card', 'online_pay');
 exception
   when duplicate_object then null;
 end $$;
@@ -308,6 +308,19 @@ using (
 );
 
 -- Cases policies
+
+drop policy if exists "Authenticated users can create cases" on public.cases;
+drop policy if exists "Admins can create cases" on public.cases;
+create policy "Admins can create cases"
+on public.cases for insert
+to authenticated
+with check (
+  created_by = auth.uid()
+  and exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+);
 
 drop policy if exists "Superadmins can delete cases" on public.cases;
 create policy "Superadmins can delete cases"
@@ -634,6 +647,7 @@ create table if not exists public.notifications (
   client_name text,
   case_id uuid references public.cases(id) on delete cascade,
   case_title text,
+  target_name text,
   is_read boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -767,17 +781,21 @@ security definer set search_path = public
 as $$
 declare
   v_actor_name text;
+  v_target_name text;
   v_case_title text;
   v_client_id uuid;
   v_client_name text;
   v_priority public.case_priority;
+  recipient record;
 begin
-  if new.user_id is distinct from new.assigned_by then
-    select full_name into v_actor_name from public.users where id = new.assigned_by;
-    select title, client_id, priority into v_case_title, v_client_id, v_priority
-      from public.cases where id = new.case_id;
-    select name into v_client_name from public.clients where id = v_client_id;
+  select full_name into v_actor_name from public.users where id = new.assigned_by;
+  select full_name into v_target_name from public.users where id = new.user_id;
+  select title, client_id, priority into v_case_title, v_client_id, v_priority
+    from public.cases where id = new.case_id;
+  select name into v_client_name from public.clients where id = v_client_id;
 
+  -- 1. Notify the assigned user (if not self-assigned)
+  if new.user_id is distinct from new.assigned_by then
     insert into public.notifications (
       user_id, actor_id, actor_name, type, case_id, case_title, client_id, client_name, priority
     )
@@ -786,6 +804,23 @@ begin
       new.case_id, v_case_title, v_client_id, v_client_name, v_priority
     );
   end if;
+
+  -- 2. Notify admins and superadmins (excluding the assigner and the assigned user)
+  for recipient in
+    select id from public.users
+    where role in ('admin', 'superadmin')
+      and (new.assigned_by is null or id is distinct from new.assigned_by)
+      and id is distinct from new.user_id
+  loop
+    insert into public.notifications (
+      user_id, actor_id, actor_name, target_name, type, case_id, case_title, client_id, client_name, priority
+    )
+    values (
+      recipient.id, new.assigned_by, coalesce(v_actor_name, 'Someone'), coalesce(v_target_name, 'User'), 'case_assigned',
+      new.case_id, v_case_title, v_client_id, v_client_name, v_priority
+    );
+  end loop;
+
   return new;
 end;
 $$;
@@ -805,10 +840,14 @@ security definer set search_path = public
 as $$
 declare
   v_actor_name text;
+  v_target_name text;
+  recipient record;
 begin
-  if new.user_id is distinct from new.created_by then
-    select full_name into v_actor_name from public.users where id = new.created_by;
+  select full_name into v_actor_name from public.users where id = new.created_by;
+  select full_name into v_target_name from public.users where id = new.user_id;
 
+  -- 1. Notify the user receiving the cash advance (if not self-created)
+  if new.user_id is distinct from new.created_by then
     insert into public.notifications (
       user_id,
       actor_id,
@@ -824,6 +863,32 @@ begin
       new.amount
     );
   end if;
+
+  -- 2. Notify admins and superadmins (excluding the creator and the recipient)
+  for recipient in
+    select id from public.users
+    where role in ('admin', 'superadmin')
+      and (new.created_by is null or id is distinct from new.created_by)
+      and id is distinct from new.user_id
+  loop
+    insert into public.notifications (
+      user_id,
+      actor_id,
+      actor_name,
+      target_name,
+      type,
+      amount
+    )
+    values (
+      recipient.id,
+      new.created_by,
+      coalesce(v_actor_name, 'Superadmin'),
+      coalesce(v_target_name, 'User'),
+      'cash_advance_added',
+      new.amount
+    );
+  end loop;
+
   return new;
 end;
 $$;
@@ -840,13 +905,17 @@ security definer set search_path = public
 as $$
 declare
   v_actor_name text;
+  v_target_name text;
   v_actor_id uuid;
+  recipient record;
 begin
   v_actor_id := auth.uid();
   if v_actor_id is not null then
     select full_name into v_actor_name from public.users where id = v_actor_id;
   end if;
+  select full_name into v_target_name from public.users where id = old.user_id;
 
+  -- 1. Notify the affected user
   if old.user_id is distinct from v_actor_id then
     insert into public.notifications (
       user_id,
@@ -863,6 +932,32 @@ begin
       old.amount
     );
   end if;
+
+  -- 2. Notify admins and superadmins (excluding the actor and the affected user)
+  for recipient in
+    select id from public.users
+    where role in ('admin', 'superadmin')
+      and (v_actor_id is null or id is distinct from v_actor_id)
+      and id is distinct from old.user_id
+  loop
+    insert into public.notifications (
+      user_id,
+      actor_id,
+      actor_name,
+      target_name,
+      type,
+      amount
+    )
+    values (
+      recipient.id,
+      v_actor_id,
+      coalesce(v_actor_name, 'Superadmin'),
+      coalesce(v_target_name, 'User'),
+      'cash_advance_deleted',
+      old.amount
+    );
+  end loop;
+
   return old;
 end;
 $$;
@@ -871,5 +966,6 @@ drop trigger if exists trg_notify_user_of_cash_advance_deletion on public.cash_a
 create trigger trg_notify_user_of_cash_advance_deletion
 before delete on public.cash_advances
 for each row execute function public.notify_user_of_cash_advance_deletion();
+
 
 

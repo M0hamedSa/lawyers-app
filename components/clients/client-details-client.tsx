@@ -306,6 +306,12 @@ export function ClientDetailsClient({
       profit_amount: client.profit_type === "per_case" ? (form.profit_amount ? Number(form.profit_amount) : 0) : 0,
     };
 
+    if (!form.id && userRole !== "admin" && userRole !== "superadmin") {
+      setError(tCases("unauthorizedCreate") || "Only admins and superadmins can create cases.");
+      setSubmitting(false);
+      return;
+    }
+
     let result;
     if (form.id) {
        result = await supabase.from("cases").update(payload).eq("id", form.id).select().single();
@@ -495,17 +501,19 @@ export function ClientDetailsClient({
               </ActionButton>
             )}
 
-            <ActionButton
-              className="w-full shrink-0 sm:w-auto"
-              onClick={() => {
-                setActiveTab("cases");
-                setForm(emptyCase);
-                setModalOpen(true);
-              }}
-            >
-              <Plus className="size-4" aria-hidden />
-              {tCases("newCase")}
-            </ActionButton>
+            {(userRole === "admin" || userRole === "superadmin") && (
+              <ActionButton
+                className="w-full shrink-0 sm:w-auto"
+                onClick={() => {
+                  setActiveTab("cases");
+                  setForm(emptyCase);
+                  setModalOpen(true);
+                }}
+              >
+                <Plus className="size-4" aria-hidden />
+                {tCases("newCase")}
+              </ActionButton>
+            )}
             
             {userRole === "superadmin" && client.status === "active" && (
               <ActionButton
@@ -680,7 +688,7 @@ export function ClientDetailsClient({
               <option value="bank_transfer">{useTranslations("Transaction")("vouchers.bank_transfer")}</option>
               <option value="receipt">{useTranslations("Transaction")("vouchers.receipt")}</option>
               <option value="card">{useTranslations("Transaction")("vouchers.card")}</option>
-              <option value="other">{useTranslations("Transaction")("vouchers.other")}</option>
+              <option value="online_pay">{useTranslations("Transaction")("vouchers.online_pay")}</option>
             </select>
           </Field>
 
@@ -1337,6 +1345,7 @@ function FinanceTab({
       case "bank_transfer": return "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400";
       case "receipt": return "bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400";
       case "card": return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-500";
+      case "online_pay":
       case "other": return "bg-stone-100 text-stone-700 dark:bg-stone-800/40 dark:text-stone-400";
       default: return "bg-ink-100 text-ink-700 dark:bg-ink-800/40 dark:text-ink-400";
     }

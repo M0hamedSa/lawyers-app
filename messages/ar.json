@@ -34,8 +34,11 @@
     "pageLabel": "صفحة {page}",
     "newTransaction": "{actor} أضاف {type} بمبلغ {amount} لـ {client}",
     "caseAssigned": "{actor} أسند إليك {case} (أولوية {priority})",
+    "caseAssignedOther": "قام {actor} بإسناد {case} إلى {target} (أولوية {priority})",
     "cashAdvanceAdded": "{actor} أضاف عهدة مالية بمبلغ {amount} لحسابك",
-    "cashAdvanceDeleted": "{actor} قام بحذف عهدة مالية بمبلغ {amount} من حسابك"
+    "cashAdvanceAddedOther": "أضاف {actor} عهدة مالية بمبلغ {amount} لـ {target}",
+    "cashAdvanceDeleted": "{actor} قام بحذف عهدة مالية بمبلغ {amount} من حسابك",
+    "cashAdvanceDeletedOther": "قام {actor} بحذف عهدة مالية بمبلغ {amount} الخاصة بـ {target}"
   },
   "Login": {
     "title": "تسجيل الدخول إلى True Legal",
@@ -148,6 +151,7 @@
   "Cases": {
     "title": "المهام",
     "newCase": "مهمة جديدة",
+    "unauthorizedCreate": "فقط المسؤولين يمكنهم إنشاء مهمة جديدة.",
     "editCase": "تعديل المهمة",
     "deleteCase": "حذف المهمة",
     "deleteConfirm": "هل أنت متأكد من حذف هذه المهمة؟ سيتم حذف جميع المعاملات المرتبطة بها.",
@@ -257,7 +261,8 @@
       "check": "إيصال",
       "receipt": "إيصال",
       "card": "فيزا",
-      "other": "أخرى"
+      "online_pay": "دفع اون لاين",
+      "other": "دفع اون لاين"
     },
     "search": "بحث في المعاملات...",
     "filterByDate": "تصفية حسب التاريخ",

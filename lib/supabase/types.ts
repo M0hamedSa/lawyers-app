@@ -1,7 +1,7 @@
 export type UserRole = "superadmin" | "admin" | "user";
 export type UserStatus = "active" | "closed";
 export type TransactionType = "payment" | "expense" | "profit" | "office";
-export type VoucherType = "cash" | "bank_transfer" | "receipt" | "card" | "other";
+export type VoucherType = "cash" | "bank_transfer" | "receipt" | "card" | "online_pay";
 export type ProfitType = "monthly" | "per_case";
 export type CasePriority = "low" | "medium" | "high" | "urgent";
 
@@ -131,6 +131,7 @@ export type AppNotification = {
   priority: CasePriority | null;
   is_read: boolean;
   cleared_at: string | null;
+  target_name?: string | null;
   created_at: string;
 };
 
@@ -454,6 +455,7 @@ export type Database = {
           case_id?: string | null;
           case_title?: string | null;
           priority?: CasePriority | null;
+          target_name?: string | null;
           is_read?: boolean;
         };
         Update: {

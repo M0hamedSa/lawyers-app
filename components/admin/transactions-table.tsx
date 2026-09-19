@@ -47,6 +47,7 @@ export function TransactionsTable({
       case "bank_transfer": return "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400";
       case "receipt": return "bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400";
       case "card": return "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-500";
+      case "online_pay":
       case "other": return "bg-stone-100 text-stone-700 dark:bg-stone-800/40 dark:text-stone-400";
       default: return "bg-ink-100 text-ink-700 dark:bg-ink-800/40 dark:text-ink-400";
     }
@@ -169,7 +170,8 @@ export function TransactionsTable({
                   bank_transfer: ["Bank Transfer", "تحويل بنكي"],
                   receipt: ["Receipt", "إيصال"],
                   card: ["Visa", "فيزا"],
-                  other: ["Other", "أخرى"],
+                  online_pay: ["Online Pay", "دفع اون لاين"],
+                  other: ["Online Pay", "دفع اون لاين"],
                 };
                 const label = labels[t.voucher_type] ? labels[t.voucher_type][isAr ? 1 : 0] : t.voucher_type;
                 return (

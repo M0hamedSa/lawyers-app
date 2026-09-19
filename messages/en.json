@@ -34,8 +34,11 @@
     "pageLabel": "Page {page}",
     "newTransaction": "{actor} added a {type} of {amount} for {client}",
     "caseAssigned": "{actor} assigned you to {case} ({priority} priority)",
+    "caseAssignedOther": "{actor} assigned {target} to {case} ({priority} priority)",
     "cashAdvanceAdded": "{actor} added a cash advance of {amount} to your account",
-    "cashAdvanceDeleted": "{actor} deleted a cash advance of {amount} from your account"
+    "cashAdvanceAddedOther": "{actor} added a cash advance of {amount} for {target}",
+    "cashAdvanceDeleted": "{actor} deleted a cash advance of {amount} from your account",
+    "cashAdvanceDeletedOther": "{actor} deleted a cash advance of {amount} for {target}"
   },
   "Login": {
     "title": "Sign in to True Legal",
@@ -148,6 +151,7 @@
   "Cases": {
     "title": "Cases",
     "newCase": "New Case",
+    "unauthorizedCreate": "Only admins and superadmins can create cases.",
     "editCase": "Edit Case",
     "deleteCase": "Delete Case",
     "deleteConfirm": "Are you sure you want to delete this case? This will delete all its transactions.",
@@ -257,7 +261,8 @@
       "check": "Receipt",
       "receipt": "Receipt",
       "card": "Visa",
-      "other": "Other"
+      "online_pay": "Online Pay",
+      "other": "Online Pay"
     },
     "search": "Search transactions...",
     "filterByDate": "Filter by date",
