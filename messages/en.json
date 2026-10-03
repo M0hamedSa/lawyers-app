@@ -238,6 +238,7 @@
     "fileUploadedBy": "Uploaded by",
     "uploadError": "Failed to upload file.",
     "deleteError": "Failed to delete file.",
+    "fileTooLarge": "File is too large. Maximum size is {max} MB.",
     "listError": "Failed to load files.",
     "megaNotConfigured": "File storage is not configured. Contact your administrator."
   },

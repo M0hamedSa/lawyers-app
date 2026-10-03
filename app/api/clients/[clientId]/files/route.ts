@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { buildFolderPath } from "@/lib/mega";
+import { syncCaseFilesFromMega } from "@/lib/case-files-sync";
 
 export async function GET(
   request: NextRequest,
@@ -28,11 +30,26 @@ export async function GET(
   try {
     const { data: caseIds } = await supabase
       .from("cases")
-      .select("id")
+      .select("id, title, clients!cases_client_id_fkey(name)")
       .eq("client_id", clientId);
 
     if (!caseIds?.length) {
       return NextResponse.json({ files: [] });
+    }
+
+    try {
+      await syncCaseFilesFromMega(
+        caseIds.map((c) => {
+          // Many-to-one joins come back as an object at runtime, though the
+          // inferred type is an array — accept both.
+          const client = c.clients as unknown as { name: string } | { name: string }[] | null;
+          const clientName = (Array.isArray(client) ? client[0]?.name : client?.name) ?? "";
+          return { id: c.id, folderPath: buildFolderPath(clientName, c.title, c.id) };
+        }),
+      );
+    } catch (e) {
+      // Still list what's in the database if Mega is unreachable.
+      console.error("Mega sync failed", e);
     }
 
     const { data: files, error } = await supabase

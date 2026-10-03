@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { FileText, Loader2, Trash2, Download, Upload, AlertCircle, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { CaseFile } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { CASE_UPLOADS_BUCKET, MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/case-uploads";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -23,6 +25,7 @@ function formatDate(dateStr: string): string {
 
 export function FilesTab({ caseId }: { caseId: string }) {
   const t = useTranslations("ClientDetails");
+  const supabase = useMemo(() => createClient(), []);
 
   const [files, setFiles] = useState<CaseFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,12 +60,37 @@ export function FilesTab({ caseId }: { caseId: string }) {
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      if (file.size > MAX_UPLOAD_BYTES) {
+        throw new Error(t("fileTooLarge", { max: MAX_UPLOAD_MB }));
+      }
+
+      // Upload straight to Supabase Storage (Vercel caps request bodies at
+      // 4.5 MB), then have the server move the staged file to Mega.
+      const urlRes = await fetch(`/api/cases/${caseId}/files/upload-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ size: file.size }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlRes.ok) {
+        throw new Error(
+          urlData.error === "FILE_TOO_LARGE"
+            ? t("fileTooLarge", { max: MAX_UPLOAD_MB })
+            : urlData.error || t("uploadError"),
+        );
+      }
+
+      const { error: stageError } = await supabase.storage
+        .from(CASE_UPLOADS_BUCKET)
+        .uploadToSignedUrl(urlData.path, urlData.token, file, {
+          contentType: file.type || "application/octet-stream",
+        });
+      if (stageError) throw new Error(stageError.message || t("uploadError"));
 
       const res = await fetch(`/api/cases/${caseId}/files`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: urlData.path, filename: file.name, mimeType: file.type }),
       });
 
       const data = await res.json();

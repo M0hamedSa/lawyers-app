@@ -238,6 +238,7 @@
     "fileUploadedBy": "رفع بواسطة",
     "uploadError": "فشل رفع الملف.",
     "deleteError": "فشل حذف الملف.",
+    "fileTooLarge": "الملف كبير جدًا. الحد الأقصى للحجم {max} ميجابايت.",
     "listError": "فشل تحميل الملفات.",
     "megaNotConfigured": "تخزين الملفات غير مهيأ. اتصل بالمسؤول."
   },

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { buildFolderPath, getFileBuffer } from "@/lib/mega";
+import { Readable } from "node:stream";
+import { buildFolderPath, getFileStream } from "@/lib/mega";
 
 export async function GET(
   request: NextRequest,
@@ -44,11 +45,14 @@ export async function GET(
       .eq("id", caseId)
       .single();
 
-    const clientName = caseData ? (caseData.clients as { name: string }[])[0]?.name ?? "" : "";
+    // Many-to-one joins come back as an object at runtime, though the
+    // inferred type is an array — accept both.
+    const client = caseData?.clients as unknown as { name: string } | { name: string }[] | null;
+    const clientName = (Array.isArray(client) ? client[0]?.name : client?.name) ?? "";
     const caseTitle = caseData ? caseData.title : "";
     const folderPath = buildFolderPath(clientName, caseTitle, caseId);
 
-    const buffer = await getFileBuffer(dbFile.mega_node_id, {
+    const { stream, size } = await getFileStream(dbFile.mega_node_id, {
       folderPath,
       filename: dbFile.filename,
     });
@@ -58,11 +62,11 @@ export async function GET(
     const safeFilename = dbFile.filename.replace(/[^\x20-\x7E]/g, "_");
     const encodedFilename = encodeURIComponent(dbFile.filename);
 
-    return new Response(new Uint8Array(buffer), {
+    return new Response(Readable.toWeb(stream) as ReadableStream<Uint8Array>, {
       headers: {
         "Content-Type": dbFile.mime_type || "application/octet-stream",
         "Content-Disposition": `${disposition}; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`,
-        "Content-Length": String(buffer.length),
+        ...(size > 0 && { "Content-Length": String(size) }),
       },
     });
   } catch (e) {

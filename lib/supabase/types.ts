@@ -384,6 +384,7 @@ export type Database = {
           mega_node_id: string;
           mega_parent_id?: string | null;
           uploaded_by?: string | null;
+          created_at?: string;
         };
         Update: {
           filename?: string;

@@ -103,6 +103,10 @@ create table if not exists public.case_files (
 
 create index if not exists case_files_case_id_idx on public.case_files (case_id);
 
+-- Lets the Mega folder sync (lib/case-files-sync.ts) skip files that are
+-- already recorded, even when two list requests run at once.
+create unique index if not exists case_files_mega_node_id_key on public.case_files (mega_node_id);
+
 drop trigger if exists case_files_set_updated_at on public.case_files;
 create trigger case_files_set_updated_at
 before update on public.case_files
@@ -231,14 +235,19 @@ with check (
 );
 
 drop policy if exists "Users can delete own case files" on public.case_files;
-create policy "Users can delete own case files"
+drop policy if exists "Users can delete case files of assigned clients" on public.case_files;
+create policy "Users can delete case files of assigned clients"
 on public.case_files for delete
 to authenticated
 using (
-  uploaded_by = auth.uid()
-  or exists (
+  exists (
     select 1 from public.users u
     where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+  or exists (
+    select 1 from public.client_access ca
+    join public.cases cs on cs.client_id = ca.client_id
+    where cs.id = case_files.case_id and ca.user_id = auth.uid()
   )
 );
 
@@ -970,5 +979,13 @@ for each row execute function public.notify_user_of_cash_advance_deletion();
 
 alter table public.notifications replica identity full;
 
-
-
+-- Staging bucket for case file uploads. The browser uploads here via a
+-- signed URL (bypassing Vercel's 4.5 MB body limit), then the API moves the
+-- file to Mega and deletes it. Private; no policies needed because uploads
+-- use server-issued signed URLs and reads use the service role.
+-- file_size_limit must match MAX_UPLOAD_MB in lib/case-uploads.ts.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('case-uploads', 'case-uploads', false, 52428800)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit;

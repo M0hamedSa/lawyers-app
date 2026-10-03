@@ -1,12 +1,13 @@
 import { Storage } from "megajs";
 import type { MutableFile } from "megajs";
+import type { Readable } from "node:stream";
 
 export function sanitizeFilename(name: string): string {
   return name.replace(/[/\\:*?"<>|]/g, "_").trim() || "_";
 }
 
 export function buildFolderPath(clientName: string, caseTitle: string, caseId: string): string {
-  return `/Mega/True Legal Website/${sanitizeFilename(clientName)}/${sanitizeFilename(caseTitle)}/${caseId}`;
+  return `/MEGA/True Legal Website/${sanitizeFilename(clientName)}/${sanitizeFilename(caseTitle)}/${caseId}`;
 }
 
 let storageInstance: Storage | null = null;
@@ -64,19 +65,40 @@ export async function uploadFile(
   };
 }
 
-export async function listFilesFromMega(folderPath: string): Promise<
-  { name: string; nodeId: string; size: number; timestamp: number }[]
-> {
-  const folder = await ensureFolderPath(folderPath);
+export type MegaFileInfo = {
+  name: string;
+  nodeId: string;
+  parentId: string;
+  size: number;
+  timestamp: number;
+};
 
-  return (folder.children ?? [])
-    .filter((c) => !c.directory)
-    .map((c) => ({
-      name: c.name ?? "",
-      nodeId: c.nodeId ?? "",
-      size: c.size ?? 0,
-      timestamp: c.timestamp ?? 0,
-    }));
+// Lists the files directly inside each folder, reloading the tree once so
+// files added outside the app (e.g. pasted in the Mega app) are picked up.
+// Missing folders are returned as empty, not created.
+export async function listFilesInFolders(
+  folderPaths: string[],
+): Promise<Map<string, MegaFileInfo[]>> {
+  const storage = await reloadTree();
+  const result = new Map<string, MegaFileInfo[]>();
+
+  for (const folderPath of folderPaths) {
+    const folder = storage.root.navigate(folderPath.split("/").filter(Boolean));
+    result.set(
+      folderPath,
+      (folder?.children ?? [])
+        .filter((c) => !c.directory)
+        .map((c) => ({
+          name: c.name ?? "",
+          nodeId: c.nodeId ?? "",
+          parentId: folder?.nodeId ?? "",
+          size: c.size ?? 0,
+          timestamp: c.timestamp ?? 0,
+        })),
+    );
+  }
+
+  return result;
 }
 
 async function reloadTree(): Promise<Storage> {
@@ -118,10 +140,12 @@ export async function deleteFile(
   await node.delete(true);
 }
 
-export async function getFileBuffer(
+// Streams the file instead of buffering it so large files aren't held in
+// memory and the response isn't subject to Vercel's 4.5 MB body limit.
+export async function getFileStream(
   nodeId: string,
   fallback?: { folderPath: string; filename: string },
-): Promise<Buffer> {
+): Promise<{ stream: Readable; size: number }> {
   let node = await getNode(nodeId);
 
   if (!node && fallback) {
@@ -129,5 +153,5 @@ export async function getFileBuffer(
   }
 
   if (!node) throw new Error("File not found on Mega");
-  return await node.downloadBuffer({});
+  return { stream: node.download({}) as unknown as Readable, size: node.size ?? 0 };
 }

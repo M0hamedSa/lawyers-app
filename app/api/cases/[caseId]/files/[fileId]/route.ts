@@ -38,32 +38,37 @@ export async function DELETE(
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    const isAdmin = user.role === "superadmin" || user.role === "admin";
-    if (dbFile.uploaded_by !== user.id && !isAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { data: caseData } = await supabase
       .from("cases")
       .select("title, clients!cases_client_id_fkey(name)")
       .eq("id", caseId)
       .single();
 
-    const clientName = caseData ? (caseData.clients as { name: string }[])[0]?.name ?? "" : "";
+    // Many-to-one joins come back as an object at runtime, though the
+    // inferred type is an array — accept both.
+    const client = caseData?.clients as unknown as { name: string } | { name: string }[] | null;
+    const clientName = (Array.isArray(client) ? client[0]?.name : client?.name) ?? "";
     const caseTitle = caseData ? caseData.title : "";
     const folderPath = buildFolderPath(clientName, caseTitle, caseId);
+
+    // Delete the row first: RLS allows it for anyone with access to the case,
+    // and if it's refused we haven't touched Mega. If the Mega delete then
+    // fails, the folder sync re-adds the row on the next list.
+    const { data: deleted, error: deleteError } = await supabase
+      .from("case_files")
+      .delete()
+      .eq("id", fileId)
+      .select("id");
+
+    if (deleteError) throw deleteError;
+    if (!deleted?.length) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     await deleteFile(dbFile.mega_node_id, {
       folderPath,
       filename: dbFile.filename,
     });
-
-    const { error: deleteError } = await supabase
-      .from("case_files")
-      .delete()
-      .eq("id", fileId);
-
-    if (deleteError) throw deleteError;
 
     return NextResponse.json({ success: true });
   } catch (e) {
