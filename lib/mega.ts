@@ -6,7 +6,7 @@ export function sanitizeFilename(name: string): string {
 }
 
 export function buildFolderPath(clientName: string, caseTitle: string, caseId: string): string {
-  return `/truelegal/${sanitizeFilename(clientName)}/${sanitizeFilename(caseTitle)}/${caseId}`;
+  return `/Mega/True Legal Website/${sanitizeFilename(clientName)}/${sanitizeFilename(caseTitle)}/${caseId}`;
 }
 
 let storageInstance: Storage | null = null;
