@@ -23,7 +23,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export function FilesTab({ caseId }: { caseId: string }) {
+export function FilesTab({ caseId, canDelete }: { caseId: string; canDelete: boolean }) {
   const t = useTranslations("ClientDetails");
   const supabase = useMemo(() => createClient(), []);
 
@@ -221,18 +221,20 @@ export function FilesTab({ caseId }: { caseId: string }) {
                 >
                   <Download className="size-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(file.id)}
-                  disabled={deleting === file.id}
-                  className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm text-error-600 transition-colors hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-950/30 disabled:opacity-50"
-                >
-                  {deleting === file.id ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="size-4" />
-                  )}
-                </button>
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(file.id)}
+                    disabled={deleting === file.id}
+                    className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-body-sm text-error-600 transition-colors hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-950/30 disabled:opacity-50"
+                  >
+                    {deleting === file.id ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-4" />
+                    )}
+                  </button>
+                )}
               </div>
             ))}
           </div>

@@ -7,12 +7,13 @@ type TransactionAuthRow = {
   users: { role: string } | null;
 };
 
-function canModifyTransaction(userId: string, role: string | null, transaction: TransactionAuthRow): boolean {
+// Regular users can only add transactions, never edit or delete them.
+function canModifyTransaction(role: string | null, transaction: TransactionAuthRow): boolean {
   if (role === "superadmin") return true;
   if (role === "admin") {
     return transaction.type !== "profit" && transaction.users?.role !== "superadmin";
   }
-  return transaction.created_by === userId;
+  return false;
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -36,7 +37,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .eq("id", user.id)
     .single();
 
-  if (!canModifyTransaction(user.id, currentUser?.role ?? null, transaction as unknown as TransactionAuthRow)) {
+  if (!canModifyTransaction(currentUser?.role ?? null, transaction as unknown as TransactionAuthRow)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -81,7 +82,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     .eq("id", user.id)
     .single();
 
-  if (!canModifyTransaction(user.id, currentUser?.role ?? null, transaction as unknown as TransactionAuthRow)) {
+  if (!canModifyTransaction(currentUser?.role ?? null, transaction as unknown as TransactionAuthRow)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

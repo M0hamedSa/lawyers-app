@@ -26,6 +26,16 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Regular users can upload files but not delete them.
+  const { data: currentUser } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (currentUser?.role !== "admin" && currentUser?.role !== "superadmin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const { data: dbFile, error: fetchError } = await supabase
       .from("case_files")

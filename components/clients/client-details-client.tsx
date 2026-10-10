@@ -634,7 +634,6 @@ export function ClientDetailsClient({
           <FinanceTab
             transactions={transactions}
             userRole={userRole}
-            currentUserId={currentUser?.id}
             superadminIds={superadminIds}
             onDelete={(id) => setConfirmDeleteTransaction(id)}
             deleting={deletingTransaction}
@@ -1108,9 +1107,10 @@ function CasesTab({ cases, userRole, client, currentUserId, onEdit, onDelete, de
   const locale = useLocale();
   const showProfit = userRole === "superadmin" && client.profit_type === "per_case";
 
+  // Regular users can only add cases, never edit or delete them.
   function canModify(c: CaseWithSummary) {
     if (userRole === "superadmin") return true;
-    return c.created_by === currentUserId;
+    return userRole === "admin" && c.created_by === currentUserId;
   }
 
   return (
@@ -1312,14 +1312,12 @@ function FilesTab({ clientId }: { clientId: string }) {
 function FinanceTab({
   transactions,
   userRole,
-  currentUserId,
   superadminIds,
   onDelete,
   deleting,
 }: {
   transactions: TransactionWithUserAndCase[];
   userRole: string | null;
-  currentUserId?: string;
   superadminIds?: Set<string>;
   onDelete?: (id: string) => void;
   deleting?: string | null;
@@ -1331,12 +1329,13 @@ function FinanceTab({
   const tClients = useTranslations("Clients");
   const locale = useLocale();
 
+  // Regular users can only add transactions, never edit or delete them.
   function canModify(item: TransactionWithUserAndCase) {
     if (userRole === "superadmin") return true;
     if (userRole === "admin") {
       return item.type !== "profit" && !superadminIds?.has(item.created_by ?? "");
     }
-    return item.created_by === currentUserId;
+    return false;
   }
 
   const getVoucherColor = (voucher?: string | null) => {

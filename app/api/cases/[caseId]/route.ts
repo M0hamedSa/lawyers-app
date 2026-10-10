@@ -22,7 +22,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ca
     .eq("id", user.id)
     .single();
 
-  if (currentUser?.role !== "superadmin" && caseData.created_by !== user.id) {
+  // Regular users can only add, never edit or delete cases.
+  const role = currentUser?.role;
+  if (role !== "superadmin" && (role !== "admin" || caseData.created_by !== user.id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -66,7 +68,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ c
     .eq("id", user.id)
     .single();
 
-  if (currentUser?.role !== "superadmin" && caseData.created_by !== user.id) {
+  // Regular users can only add, never edit or delete cases.
+  const role = currentUser?.role;
+  if (role !== "superadmin" && (role !== "admin" || caseData.created_by !== user.id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

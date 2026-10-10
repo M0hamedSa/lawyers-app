@@ -236,18 +236,14 @@ with check (
 
 drop policy if exists "Users can delete own case files" on public.case_files;
 drop policy if exists "Users can delete case files of assigned clients" on public.case_files;
-create policy "Users can delete case files of assigned clients"
+drop policy if exists "Admins can delete case files" on public.case_files;
+create policy "Admins can delete case files"
 on public.case_files for delete
 to authenticated
 using (
   exists (
     select 1 from public.users u
     where u.id = auth.uid() and u.role in ('admin', 'superadmin')
-  )
-  or exists (
-    select 1 from public.client_access ca
-    join public.cases cs on cs.client_id = ca.client_id
-    where cs.id = case_files.case_id and ca.user_id = auth.uid()
   )
 );
 
@@ -270,24 +266,29 @@ on public.users for insert
 to authenticated
 with check (id = auth.uid());
 
+alter table public.users add column if not exists cash_advance numeric(12,2) default 0;
+
+-- Self-updates must keep role and cash_advance unchanged.
 drop policy if exists "Users can update own profile" on public.users;
-create policy "Users can update own profile"
+drop policy if exists "Users can update their own basic info" on public.users;
+create policy "Users can update their own basic info"
+on public.users for update
+to authenticated
+using (auth.uid() = id)
+with check (
+  auth.uid() = id
+  and role = (select u.role from public.users u where u.id = auth.uid())
+  and cash_advance = (select u.cash_advance from public.users u where u.id = auth.uid())
+);
+
+drop policy if exists "Admins can update all user info" on public.users;
+create policy "Admins can update all user info"
 on public.users for update
 to authenticated
 using (
-  id = auth.uid() 
-  or 
   exists (
-    select 1 from public.users u 
-    where u.id = auth.uid() and u.role = 'superadmin'
-  )
-)
-with check (
-  id = auth.uid() 
-  or 
-  exists (
-    select 1 from public.users u 
-    where u.id = auth.uid() and u.role = 'superadmin'
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
   )
 );
 
@@ -343,11 +344,23 @@ using (
 );
 
 drop policy if exists "Users can delete own cases" on public.cases;
-create policy "Users can delete own cases"
-on public.cases for delete
+
+drop policy if exists "Authenticated users can update cases" on public.cases;
+drop policy if exists "Admins can update cases" on public.cases;
+create policy "Admins can update cases"
+on public.cases for update
 to authenticated
 using (
-  created_by = auth.uid()
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
+)
+with check (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+  )
 );
 
 -- Clients policies
@@ -451,8 +464,11 @@ with check (
   )
 );
 
+drop policy if exists "Creators or admins can update transactions" on public.transactions;
+drop policy if exists "Creators or admins can delete transactions" on public.transactions;
 drop policy if exists "Authenticated users can update transactions" on public.transactions;
-create policy "Authenticated users can update transactions"
+drop policy if exists "Admins can update transactions" on public.transactions;
+create policy "Admins can update transactions"
 on public.transactions for update
 to authenticated
 using (
@@ -471,7 +487,6 @@ using (
       where creator.id = transactions.created_by and creator.role = 'superadmin'
     )
   )
-  or created_by = auth.uid()
 )
 with check (
   exists (
@@ -487,17 +502,6 @@ with check (
     and not exists (
       select 1 from public.users creator
       where creator.id = transactions.created_by and creator.role = 'superadmin'
-    )
-  )
-  or (
-    type = 'office'
-    and created_by = auth.uid()
-  )
-  or (
-    created_by = auth.uid()
-    and exists (
-      select 1 from public.client_access ca
-      where ca.client_id = client_id and ca.user_id = auth.uid()
     )
   )
 );

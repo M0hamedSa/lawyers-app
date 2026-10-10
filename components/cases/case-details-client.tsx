@@ -513,7 +513,6 @@ export function CaseDetailsClient({
         <FinanceTab
           transactions={transactions}
           userRole={userRole}
-          currentUserId={userId}
           superadminIds={superadminIds}
           onEdit={openEditModal}
            onDelete={(id) => setConfirmDelete(id)}
@@ -523,7 +522,7 @@ export function CaseDetailsClient({
       ) : null}
       {activeTab === "files" ? (
         <FadeInBox delay={0.2}>
-        <FilesTab caseId={caseData.id} />
+        <FilesTab caseId={caseData.id} canDelete={canManageAssignment} />
         </FadeInBox>
       ) : null}
 
@@ -755,7 +754,6 @@ function FinanceMetric({ label, value, tone, rawValue, locale = "en-US" }: { lab
 function FinanceTab({
   transactions,
   userRole,
-  currentUserId,
   superadminIds,
   onEdit,
   onDelete,
@@ -763,7 +761,6 @@ function FinanceTab({
 }: {
   transactions: TransactionWithUser[];
   userRole: string | null;
-  currentUserId?: string;
   superadminIds?: Set<string>;
   onEdit: (item: TransactionWithUser) => void;
   onDelete: (id: string) => void;
@@ -774,12 +771,13 @@ function FinanceTab({
   const tCommon = useTranslations("Common");
   const locale = useLocale();
 
+  // Regular users can only add transactions, never edit or delete them.
   function canModify(item: TransactionWithUser) {
     if (userRole === "superadmin") return true;
     if (userRole === "admin") {
       return item.type !== "profit" && !superadminIds?.has(item.created_by ?? "");
     }
-    return item.created_by === currentUserId;
+    return false;
   }
 
   const getVoucherColor = (voucher?: string | null) => {
