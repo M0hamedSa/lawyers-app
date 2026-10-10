@@ -282,13 +282,20 @@ with check (
 );
 
 drop policy if exists "Admins can update all user info" on public.users;
-create policy "Admins can update all user info"
+drop policy if exists "Superadmins can update all user info" on public.users;
+create policy "Superadmins can update all user info"
 on public.users for update
 to authenticated
 using (
   exists (
     select 1 from public.users u
-    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
+    where u.id = auth.uid() and u.role = 'superadmin'
+  )
+)
+with check (
+  exists (
+    select 1 from public.users u
+    where u.id = auth.uid() and u.role = 'superadmin'
   )
 );
 
