@@ -616,7 +616,7 @@ export function ClientDetailsClient({
           />
       ) : null}
       {activeTab === "cases" ? (
-        <CasesTab cases={cases} userRole={userRole} client={client} currentUserId={currentUser?.id} onEdit={(c) => {
+        <CasesTab cases={cases} userRole={userRole} client={client} onEdit={(c) => {
           setForm({
             id: c.id,
             title: c.title,
@@ -1100,7 +1100,7 @@ function OverviewTab({
   );
 }
 
-function CasesTab({ cases, userRole, client, currentUserId, onEdit, onDelete, deleting }: { cases: CaseWithSummary[], userRole: string | null, client: ClientWithSummary, currentUserId?: string, onEdit: (c: CaseWithSummary) => void, onDelete: (id: string) => void, deleting: string | null }) {
+function CasesTab({ cases, userRole, client, onEdit, onDelete, deleting }: { cases: CaseWithSummary[], userRole: string | null, client: ClientWithSummary, onEdit: (c: CaseWithSummary) => void, onDelete: (id: string) => void, deleting: string | null }) {
   const t = useTranslations("Cases");
   const tClients = useTranslations("Clients");
   const tCommon = useTranslations("Common");
@@ -1108,10 +1108,7 @@ function CasesTab({ cases, userRole, client, currentUserId, onEdit, onDelete, de
   const showProfit = userRole === "superadmin" && client.profit_type === "per_case";
 
   // Regular users can only add cases, never edit or delete them.
-  function canModify(c: CaseWithSummary) {
-    if (userRole === "superadmin") return true;
-    return userRole === "admin" && c.created_by === currentUserId;
-  }
+  const canModify = userRole === "admin" || userRole === "superadmin";
 
   return (
     <FadeInBox>
@@ -1175,7 +1172,7 @@ function CasesTab({ cases, userRole, client, currentUserId, onEdit, onDelete, de
                 header: "",
                 className: "text-end",
                 cell: (c: CaseWithSummary) => {
-                  if (!canModify(c)) return null;
+                  if (!canModify) return null;
                   const isDeleting = deleting === c.id;
                   return (
                     <div className="flex justify-end gap-1">
