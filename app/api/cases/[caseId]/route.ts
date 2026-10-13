@@ -10,7 +10,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ca
 
   const { data: caseData } = await supabase
     .from("cases")
-    .select("created_by, client_id")
+    .select("id")
     .eq("id", caseId)
     .single();
 
@@ -24,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ca
 
   // Regular users can only add, never edit or delete cases.
   const role = currentUser?.role;
-  if (role !== "superadmin" && (role !== "admin" || caseData.created_by !== user.id)) {
+  if (role !== "superadmin" && role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -56,7 +56,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ c
 
   const { data: caseData } = await supabase
     .from("cases")
-    .select("created_by")
+    .select("id")
     .eq("id", caseId)
     .single();
 
@@ -70,7 +70,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ c
 
   // Regular users can only add, never edit or delete cases.
   const role = currentUser?.role;
-  if (role !== "superadmin" && (role !== "admin" || caseData.created_by !== user.id)) {
+  if (role !== "superadmin" && role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

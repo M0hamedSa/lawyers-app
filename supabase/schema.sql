@@ -340,13 +340,14 @@ with check (
 );
 
 drop policy if exists "Superadmins can delete cases" on public.cases;
-create policy "Superadmins can delete cases"
+drop policy if exists "Admins can delete cases" on public.cases;
+create policy "Admins can delete cases"
 on public.cases for delete
 to authenticated
 using (
   exists (
     select 1 from public.users u
-    where u.id = auth.uid() and u.role = 'superadmin'
+    where u.id = auth.uid() and u.role in ('admin', 'superadmin')
   )
 );
 
