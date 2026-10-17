@@ -90,9 +90,15 @@ export async function loadKeyManagerShareKeys(storage: Storage): Promise<void> {
   }
 }
 
-async function ensureFolderPath(path: string): Promise<MutableFile> {
-  const storage = await getStorage();
+// Creates any missing folders along the path and returns the last one.
+export async function ensureFolderPath(path: string): Promise<MutableFile> {
+  let storage = await getStorage();
   const parts = path.split("/").filter(Boolean);
+  // The cached tree may predate folders made by another server instance or
+  // in the Mega app; reload before creating anything so they aren't duplicated.
+  if (!storage.root.navigate(parts)?.directory) {
+    storage = await reloadTree();
+  }
   let current = storage.root;
 
   for (const part of parts) {

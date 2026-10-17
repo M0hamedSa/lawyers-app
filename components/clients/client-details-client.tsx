@@ -327,6 +327,16 @@ export function ClientDetailsClient({
 
     const caseId = result.data.id as string;
 
+    if (!form.id) {
+      // Not awaited: the case is saved either way, and uploads create the
+      // folder too if this fails.
+      fetch(`/api/cases/${caseId}/folder`, { method: "POST" })
+        .then((res) => {
+          if (!res.ok) console.error("Failed to create case folder", res.status);
+        })
+        .catch((e) => console.error("Failed to create case folder", e));
+    }
+
     if (userRole === "admin" || userRole === "superadmin") {
       const existingIds = form.id
         ? cases.find((c) => c.id === form.id)?.assignees.map((a) => a.id) ?? []
