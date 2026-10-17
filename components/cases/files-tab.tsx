@@ -23,6 +23,16 @@ function formatDate(dateStr: string): string {
   });
 }
 
+// Adds files the Mega sync found to the list, keeping newest first. Files
+// already listed are skipped, so a sync that finishes after an upload or
+// delete can't undo it.
+export function mergeSyncedFiles<T extends { id: string; created_at: string }>(current: T[], added: T[]): T[] {
+  const known = new Set(current.map((f) => f.id));
+  return [...current, ...added.filter((f) => !known.has(f.id))].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+}
+
 export function FilesTab({ caseId, canDelete }: { caseId: string; canDelete: boolean }) {
   const t = useTranslations("ClientDetails");
   const supabase = useMemo(() => createClient(), []);
@@ -48,9 +58,23 @@ export function FilesTab({ caseId, canDelete }: { caseId: string; canDelete: boo
     }
   }, [caseId, t]);
 
+  const syncFiles = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/cases/${caseId}/files/sync`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const added: CaseFile[] = data.files ?? [];
+      if (added.length) setFiles((prev) => mergeSyncedFiles(prev, added));
+    } catch (e) {
+      // The database list is still shown if Mega is unreachable.
+      console.error("Mega sync failed", e);
+    }
+  }, [caseId]);
+
   useEffect(() => {
-    loadFiles();
-  }, [loadFiles]);
+    // Show what's in the database first; syncing with Mega is slow.
+    loadFiles().then(syncFiles);
+  }, [loadFiles, syncFiles]);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

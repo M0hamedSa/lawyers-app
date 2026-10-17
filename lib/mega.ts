@@ -11,11 +11,24 @@ export function buildFolderPath(clientName: string, caseTitle: string, caseId: s
   return `/MEGA/المكتب/True Legal Website/${sanitizeFilename(clientName)}/${sanitizeFilename(caseTitle)}/${caseId}`;
 }
 
-let storageInstance: Storage | null = null;
+// Loading the tree fetches and decrypts every node in the account, which is
+// slow, so a tree this recent is reused instead of reloaded.
+const TREE_MAX_AGE_MS = 30_000;
 
-async function getStorage(): Promise<Storage> {
-  if (storageInstance) return storageInstance;
+let storagePromise: Promise<Storage> | null = null;
+let reloadPromise: Promise<Storage> | null = null;
+let treeLoadedAt = 0;
 
+// Shared so concurrent requests on a cold instance log in only once.
+function getStorage(): Promise<Storage> {
+  storagePromise ??= login().catch((err) => {
+    storagePromise = null;
+    throw err;
+  });
+  return storagePromise;
+}
+
+async function login(): Promise<Storage> {
   const email = process.env.MEGA_EMAIL;
   const password = process.env.MEGA_PASSWORD;
 
@@ -23,10 +36,11 @@ async function getStorage(): Promise<Storage> {
     throw new Error("MEGA_NOT_CONFIGURED");
   }
 
+  // ready also loads the tree.
   const storage = await new Storage({ email, password }).ready;
   await loadKeyManagerShareKeys(storage);
-  storageInstance = storage;
-  return storageInstance;
+  treeLoadedAt = Date.now();
+  return storage;
 }
 
 // megajs only reads share keys from the legacy "ok" list, which MEGA no
@@ -97,7 +111,7 @@ export async function ensureFolderPath(path: string): Promise<MutableFile> {
   // The cached tree may predate folders made by another server instance or
   // in the Mega app; reload before creating anything so they aren't duplicated.
   if (!storage.root.navigate(parts)?.directory) {
-    storage = await reloadTree();
+    storage = await reloadTree(0);
   }
   let current = storage.root;
 
@@ -143,9 +157,10 @@ export type MegaFileInfo = {
   timestamp: number;
 };
 
-// Lists the files directly inside each folder, reloading the tree once so
-// files added outside the app (e.g. pasted in the Mega app) are picked up.
-// Missing folders are returned as empty, not created.
+// Lists the files directly inside each folder, reloading the tree if it's
+// older than TREE_MAX_AGE_MS so files added outside the app (e.g. pasted in
+// the Mega app) are picked up. Missing folders are returned as empty, not
+// created.
 export async function listFilesInFolders(
   folderPaths: string[],
 ): Promise<Map<string, MegaFileInfo[]>> {
@@ -171,17 +186,31 @@ export async function listFilesInFolders(
   return result;
 }
 
-async function reloadTree(): Promise<Storage> {
+// Reloads the tree unless it was loaded within maxAgeMs. Concurrent callers
+// share one reload.
+async function reloadTree(maxAgeMs = TREE_MAX_AGE_MS): Promise<Storage> {
   const storage = await getStorage();
-  // reload() replaces storage.shareKeys with only the legacy keys.
-  await storage.reload(true);
-  await loadKeyManagerShareKeys(storage);
-  return storage;
+  if (Date.now() - treeLoadedAt < maxAgeMs) return storage;
+
+  reloadPromise ??= (async () => {
+    try {
+      // reload() replaces storage.shareKeys with only the legacy keys.
+      await storage.reload(true);
+      await loadKeyManagerShareKeys(storage);
+      treeLoadedAt = Date.now();
+      return storage;
+    } finally {
+      reloadPromise = null;
+    }
+  })();
+  return reloadPromise;
 }
 
+// Only reloads when the node isn't in the cached tree, e.g. it was uploaded
+// through another server instance.
 async function getNode(nodeId: string): Promise<MutableFile | undefined> {
-  const storage = await reloadTree();
-  return storage.files[nodeId];
+  const storage = await getStorage();
+  return storage.files[nodeId] ?? (await reloadTree(0)).files[nodeId];
 }
 
 // Resolves a file by its folder path + filename. Used as a fallback for

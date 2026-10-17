@@ -22,6 +22,7 @@ import type {
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { encodeId } from "@/lib/id-utils";
 import { ExportCasesButton } from "@/components/clients/export-cases-button";
+import { mergeSyncedFiles } from "@/components/cases/files-tab";
 import { FadeInBox, StaggerContainer, CountUpNumber } from "@/components/ui/animated";
 import { CashFlowChart } from "@/components/charts/cash-flow-chart";
 import { ClientBreakdownChart } from "@/components/charts/client-breakdown-chart";
@@ -1238,7 +1239,21 @@ function FilesTab({ clientId }: { clientId: string }) {
         if (!cancelled) setLoading(false);
       }
     }
-    load();
+    async function sync() {
+      try {
+        const res = await fetch(`/api/clients/${clientId}/files/sync`, { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        const added: (CaseFile & { cases: { title: string } })[] = data.files ?? [];
+        // The list only shows the 20 most recent files.
+        if (!cancelled && added.length) setFiles((prev) => mergeSyncedFiles(prev, added).slice(0, 20));
+      } catch (e) {
+        // The database list is still shown if Mega is unreachable.
+        console.error("Mega sync failed", e);
+      }
+    }
+    // Show what's in the database first; syncing with Mega is slow.
+    load().then(sync);
     return () => { cancelled = true; };
   }, [clientId, t]);
 

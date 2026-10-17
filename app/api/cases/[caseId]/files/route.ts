@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { buildFolderPath, uploadFile } from "@/lib/mega";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CASE_UPLOADS_BUCKET, stagingPrefix } from "@/lib/case-uploads";
-import { syncCaseFilesFromMega } from "@/lib/case-files-sync";
 
 // Moving a large file from storage to Mega can take a while.
 export const maxDuration = 60;
@@ -51,17 +50,8 @@ export async function GET(
   }
 
   try {
-    // getCaseContext goes through RLS, so this only syncs cases the user can see.
-    const context = await getCaseContext(supabase, caseId);
-    if (context) {
-      try {
-        await syncCaseFilesFromMega([{ id: caseId, folderPath: context.folderPath }]);
-      } catch (e) {
-        // Still list what's in the database if Mega is unreachable.
-        console.error("Mega sync failed", e);
-      }
-    }
-
+    // Files added directly in Mega are picked up by the sync route, which the
+    // files tab calls after showing this list.
     const { data: files, error } = await supabase
       .from("case_files")
       .select("*")

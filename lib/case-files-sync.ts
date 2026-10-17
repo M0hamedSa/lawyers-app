@@ -28,11 +28,11 @@ function guessMimeType(filename: string): string {
 // the database — e.g. files pasted directly into the folder in the Mega app.
 // Callers must have already checked the user can access these cases, since
 // this writes with the service role. Rows get uploaded_by = null, so only
-// admins can delete them.
+// admins can delete them. Returns the ids of the rows it added.
 export async function syncCaseFilesFromMega(
   cases: { id: string; folderPath: string }[],
-): Promise<void> {
-  if (!cases.length) return;
+): Promise<string[]> {
+  if (!cases.length) return [];
 
   const megaFiles = await listFilesInFolders(cases.map((c) => c.folderPath));
   const admin = createAdminClient();
@@ -67,12 +67,14 @@ export async function syncCaseFilesFromMega(
     }
   }
 
-  if (!rows.length) return;
+  if (!rows.length) return [];
 
   // ignoreDuplicates relies on the unique index on mega_node_id, so two
   // overlapping list requests can't insert the same file twice.
-  const { error: insertError } = await admin
+  const { data: inserted, error: insertError } = await admin
     .from("case_files")
-    .upsert(rows, { onConflict: "mega_node_id", ignoreDuplicates: true });
+    .upsert(rows, { onConflict: "mega_node_id", ignoreDuplicates: true })
+    .select("id");
   if (insertError) throw insertError;
+  return inserted?.map((f) => f.id) ?? [];
 }
